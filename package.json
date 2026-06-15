@@ -1,0 +1,25 @@
+{
+  "name": "@atheory-ai/skillex-packs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Canonical and community skillex pack registry",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atheory-ai/skillex-packs.git"
+  },
+  "workspaces": [
+    "ecosystems/*"
+  ],
+  "scripts": {
+    "doctor": "skillex doctor",
+    "refresh": "skillex refresh",
+    "validate": "skillex test"
+  },
+  "devDependencies": {
+    "@atheory-ai/skillex": "^0.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

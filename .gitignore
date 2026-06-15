@@ -1,0 +1,6 @@
+node_modules/
+.skillex/
+dist/
+registry/build/
+*.log
+.DS_Store

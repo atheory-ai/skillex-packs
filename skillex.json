@@ -1,0 +1,13 @@
+{
+  "Version": 4,
+  "Rules": [
+    {
+      "Scope": "**",
+      "Skills": [
+        "skills/repo.md",
+        "skills/authoring-a-pack.md"
+      ],
+      "DependencyBoundary": ""
+    }
+  ]
+}
