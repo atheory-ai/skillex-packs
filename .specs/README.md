@@ -18,6 +18,9 @@ solidifies enough to govern behavior, lift the stable parts into
    trust tiers, review process, naming separation, contribution flow
 6. **[05-distribution.md](05-distribution.md)** — registry manifest,
    hosting, install UX, CLI / MCP integration
+7. **[06-registries-and-federation.md](06-registries-and-federation.md)** —
+   multiple registries, precedence, policy filtering, and handle→root trust
+   binding (design-forward; phased into v1 and post-v1)
 
 Each spec ends with an **Open questions** section. Resolve those before
 implementing, not during.

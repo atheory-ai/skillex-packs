@@ -18,8 +18,11 @@ packs so that:
 
 ## Non-goals (for v1)
 
-- Hosting **private** packs. v1 is public-only. Private registries are a
-  follow-on once the public mechanics are stable.
+- Hosting **private** packs. v1 is public-only. Private/corp registries are
+  a follow-on once the public mechanics are stable — but the *mechanism*
+  for them (plural `registries[]` config, precedence, policy filtering,
+  handle→root trust binding) ships in v1 so nothing has to be re-architected
+  later. See `06-registries-and-federation.md`.
 - Running **arbitrary code** inside packs. A pack is markdown + YAML + JSON.
   We never `eval`, `exec`, or load native plugins from a pack. The trust
   surface is "the agent reads this text"; that already needs a prompt-
@@ -33,10 +36,10 @@ packs so that:
 | Phase | Deliverable | Gate |
 |---|---|---|
 | **P0 — Spec freeze** | These docs reach consensus. Pack manifest schema (`pack.yaml` v1) is locked. | Spec PR review by atheory-ai |
-| **P1 — Engine read path** | Engine repo: `skillex packs available / install / list / remove` commands; manifest fetch + verify; consent prompt; uninstall path. | Acceptance fixtures in engine repo |
-| **P2 — Registry plumbing** | This repo: validate / build / sign / publish scripts; CI that produces a signed manifest on every tag. | First test release `v0.0.1` with one toy pack |
-| **P3 — Canonical seed** | Ship 3–5 canonical packs: `node-core`, `nextjs`, `eslint`, `go-core`, `python-core`. | Each pack has skills, tests, owners |
-| **P4 — Community lane** | Contribution template, CODEOWNERS for `community/`, security review checklist, automated PR linting. | First merged community pack |
+| **P1 — Engine read path** | Engine repo: `skillex packs available / install / list / remove` commands; manifest fetch + verify; consent prompt; uninstall path; plural `registries[]` config with precedence + policy filtering + handle→root trust binding (`06-registries-and-federation.md`). | Acceptance fixtures in engine repo |
+| **P2 — Registry plumbing** | This repo: validate / build / sign / publish scripts; CI that produces a signed manifest on every tag; all discovery surfaces (Release + raw + `packs.skillex.dev` Worker + GitHub Pages index — see `05-distribution.md`). | First test release `v0.0.1` with one toy pack |
+| **P3 — Canonical seed** | Ship 3–5 canonical packs: `javascript-core`, `nextjs`, `eslint`, `go-core`, `python-core`. | Each pack has skills, tests, owners |
+| **P4 — Community lane** | Contribution template, per-handle CODEOWNERS, DCO sign-off enforcement, security review checklist, automated PR linting. | First merged community pack |
 | **P5 — MCP UX** | Agent-facing tools: `list_available_packs`, `propose_pack_install` with diff preview. | Demo in claude / cursor |
 
 P1 and P2 can land in parallel — they're decoupled by the manifest schema.
@@ -50,10 +53,30 @@ P1 and P2 can land in parallel — they're decoupled by the manifest schema.
 - Mirroring to additional registries (Anthropic skill registry, etc.) —
   out of scope until we have something worth mirroring.
 
-## Open questions
+## Resolved
 
-- Should the registry repo also be the **source-of-truth git host** for
-  community packs, or should community packs live in their own repos and
-  this repo merely **lists** them? (See `04-canonical-vs-community.md`.)
-- Do we need a **provenance attestation** (SLSA L2+) at launch, or can we
-  start with cosign-signed manifests and add SLSA later?
+- **SLSA L2 provenance ships at launch.** Since every tarball is built in
+  our own CI pipeline (no externally-produced artifacts in v1), generating
+  provenance via `slsa-github-generator` is nearly free — there is no
+  reason to defer it. Launch with cosign-signed manifests **and** a
+  per-release SLSA L2 attestation; the engine verifies provenance in
+  addition to the manifest signature. L3 (hermetic builder) stays a later
+  upgrade. See `03-security.md`, "SLSA / provenance".
+- **Naming: handle-first, tier derived.** Pack names are
+  `<handle>.<ecosystem>.<scope>.<name>[.<descriptor>]`, where `handle` is a
+  verified GitHub user/org and `atheory-ai` is the canonical owner. There
+  is no tier segment — the engine derives the tier (core / official /
+  community) from the handle and always displays it. This lets upstreams
+  publish official packs under their own brand
+  (`vercel.javascript.metaframework.nextjs`) and keeps ecosystem-position
+  discovery. See `01-naming-and-structure.md` and
+  `04-canonical-vs-community.md`.
+- **Hosting / source-of-truth for community packs.** v1 has a single
+  model: contributors submit pack **source** via PR to this repo, and our
+  CI builds, hashes, signs, and SLSA-attests every tarball — core and
+  community alike. No external repos or externally-produced tarballs in
+  v1; community review happens in the PR, behind a mandatory automated +
+  human review gate (per version). Externally-originated packs are
+  deferred to a future **atheory-ai Studio** trusted-publisher path.
+  Consumers get durability by vendoring `.skillex/packs/` into their own
+  git. See `04-canonical-vs-community.md` and `05-distribution.md`.

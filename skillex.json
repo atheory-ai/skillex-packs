@@ -5,7 +5,13 @@
       "Scope": "**",
       "Skills": [
         "skills/repo.md",
-        "skills/authoring-a-pack.md"
+        "skills/naming-and-tiers.md",
+        "skills/authoring-a-pack.md",
+        "skills/versioning-a-pack.md",
+        "skills/contributing-and-dco.md",
+        "skills/security-and-review.md",
+        "skills/releasing-a-pack.md",
+        "skills/registries-and-federation.md"
       ],
       "DependencyBoundary": ""
     }

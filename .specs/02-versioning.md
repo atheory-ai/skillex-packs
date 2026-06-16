@@ -31,8 +31,10 @@ Every pack version declares which world it works in:
 
 ```yaml
 compatibility:
-  # Required: language baseline
-  node: ">=20"          # or `go: ">=1.22"`, `python: ">=3.11"`
+  # Required: runtime / language baseline. For JavaScript this is the
+  # runtime (node/bun/deno) — the ecosystem segment is the language, so the
+  # runtime lives here. For Go/Python the toolchain and language coincide.
+  node: ">=20"          # or `bun: ">=1.1"`, `deno: ">=1.4"`, `go: ">=1.22"`, `python: ">=3.11"`
 
   # Optional: framework / library versions, expressed as semver ranges
   nextjs: ">=14 <16"
@@ -61,7 +63,7 @@ Rules:
 
 Given a detected project and a registry manifest:
 
-1. Filter manifest entries by name (`core.node.metaframework.nextjs`).
+1. Filter manifest entries by name (`atheory-ai.javascript.metaframework.nextjs`).
 2. From those, keep entries whose `compatibility` is satisfied by the
    detected environment.
 3. Of the remaining, pick the **highest semver**.
@@ -75,20 +77,20 @@ This is the same algorithm npm / cargo / Go modules use; it's well-trodden.
 Both of these live in the registry at the same time:
 
 ```
-core.node.metaframework.nextjs@1.7.2
+atheory-ai.javascript.metaframework.nextjs@1.7.2
   compatibility: { nextjs: ">=13 <14" }
 
-core.node.metaframework.nextjs@2.4.0
+atheory-ai.javascript.metaframework.nextjs@2.4.0
   compatibility: { nextjs: ">=14 <16" }
 ```
 
 A Next.js 13 project installs `1.7.2`; a Next.js 15 project installs
 `2.4.0`. They don't interfere.
 
-**On disk in this repo we keep one source directory** (`ecosystems/node/
-packs/core/metaframework.nextjs/`). The `1.x` source is on the
+**On disk in this repo we keep one source directory** (`ecosystems/javascript/
+packs/atheory-ai/metaframework.nextjs/`). The `1.x` source is on the
 `maint/nextjs-1.x` branch; `main` carries `2.x`. We tag releases
-`pack/core.node.metaframework.nextjs/v2.4.0`. See `05-distribution.md`
+`pack/atheory-ai.javascript.metaframework.nextjs/v2.4.0`. See `05-distribution.md`
 for the tag scheme.
 
 This keeps `main` clean and forces maintainers to consciously cherry-pick
@@ -99,8 +101,8 @@ fixes back to `1.x` — a healthy discipline.
 If two eras of a framework are so different that a single team can't
 realistically maintain both with shared muscle memory, fork the name:
 
-- `core.node.metaframework.nextjs.pages` (App router era)
-- `core.node.metaframework.nextjs.app`   (App router era)
+- `atheory-ai.javascript.metaframework.nextjs.pages` (Pages router era)
+- `atheory-ai.javascript.metaframework.nextjs.app`   (App router era)
 
 This is the **directory-level fork** option the user flagged. Use sparingly
 — each pack name is a separate review queue, OWNERS file, and
@@ -122,12 +124,45 @@ A `schemaVersion` bump is a breaking change to **all** engine clients.
 Treat it as we would treat an engine major. Defer schema changes; prefer
 adding optional fields.
 
-## Open questions
+## Renames & supersession
 
-- Do we want to record an explicit `replaces` / `superseded-by` field so
-  that a renamed pack tells the engine "if you have me, install <new>
-  instead"? Useful but adds resolver complexity.
-- Pre-release semver tags (`-rc.1`, `-beta.2`) — opt-in only via
-  `--include-prerelease`?
-- Should `compatibility` support a `not:` operator for known-bad ranges,
-  e.g. "every version of next except 14.2.3"? Yes eventually, no in v1.
+When a pack is renamed — most commonly when a community pack is promoted to
+core and republished under the `atheory-ai` handle
+(`04-canonical-vs-community.md`), since the handle is the first name
+segment — the old name does not silently disappear. Two optional fields
+express the link in `pack.yaml`, mirrored into the manifest entry:
+
+- `superseded-by: <new-name>` on the **old** pack — "I am retired; install
+  `<new-name>` instead."
+- `replaces: <old-name>` on the **new** pack — the inverse pointer, so the
+  chain is walkable from either end.
+
+Engine behavior:
+
+- On `skillex packs update`, a locally-installed pack carrying
+  `superseded-by` resolves to its successor (subject to the same
+  `compatibility` filtering), after showing the rename in the install diff.
+- A fresh `skillex packs install <old-name>` warns and installs the
+  successor.
+- Supersession is **not** a trust shortcut: a rename across handles
+  (community → core) still passes the full review gate for the new pack.
+
+This is the `replaces` / `superseded-by` chain referenced by core-pack
+deprecation in `04-canonical-vs-community.md` and carried in the manifest
+(`05-distribution.md`).
+
+## Pre-release versions
+
+Pre-release semver tags (`-rc.1`, `-beta.2`, `-next.0`) are supported but
+**opt-in**: the resolver ignores them unless the user passes
+`--include-prerelease`. A stable range never resolves to a pre-release, so
+publishing `2.0.0-rc.1` cannot surprise a project tracking `^1`. This
+matches npm / cargo behavior and keeps the default install path boring.
+
+## Resolved
+
+- **No `not:` operator in `compatibility`.** `compatibility` uses plain
+  semver ranges only. A single known-bad version is excluded the normal
+  way — tighten the range (`>=14 <16` → `>=14 <14.2.3 || >14.2.3 <16`) or,
+  for a security problem, use a `revocations` entry (`03-security.md`).
+  Adding a bespoke `not:` operator isn't worth the extra resolver surface.
