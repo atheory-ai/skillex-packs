@@ -1,0 +1,20 @@
+name: atheory-ai.javascript.tool.example
+version: 0.1.0
+description: Minimal example pack that exercises the registry build pipeline.
+authors: [atheory-ai]
+license: Apache-2.0
+homepage: https://github.com/atheory-ai/skillex-packs/tree/main/ecosystems/javascript/packs/atheory-ai/tool.example
+
+compatibility:
+  node: ">=20"
+  skillex: ">=0.7 <2"
+
+activation:
+  detectors: []
+  files-present: []
+
+scopes:
+  - subtree
+
+skills:
+  - file: skills/usage.md
