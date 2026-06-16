@@ -1,0 +1,34 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned Node keeps the deterministic tarball/manifest reproducible
+      # (gzip output depends on the bundled zlib version).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+
+      # Pack security / content / naming gate (.specs/03 + 04).
+      - name: Lint packs
+        run: npm run lint:packs
+
+      # The manifest must build from the packs (.specs/05).
+      - name: Build manifest
+        run: npm run build:manifest
+
+      # Repo skill test files are well-formed (.specs / skillex convention).
+      - name: Validate skills
+        run: npm run validate

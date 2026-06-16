@@ -14,7 +14,7 @@
   "scripts": {
     "doctor": "skillex doctor",
     "refresh": "skillex refresh",
-    "validate": "skillex test",
+    "validate": "skillex test validate",
     "lint:packs": "node scripts/lint-pack.mjs",
     "build:manifest": "node scripts/build-manifest.mjs",
     "check:packs": "node scripts/lint-pack.mjs && node scripts/build-manifest.mjs --check"
