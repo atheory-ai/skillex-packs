@@ -1,0 +1,23 @@
+# Code owners for review routing (.specs/04-canonical-vs-community.md).
+# OWNERS files inside packs are maintenance routing; this file drives the
+# required-review gate.
+
+# Design, tooling, governance, and the skill set: atheory-ai maintainers.
+/.specs/                       @atheory-ai/skillex-maintainers
+/scripts/                      @atheory-ai/skillex-maintainers
+/.github/                      @atheory-ai/skillex-maintainers
+/skills/                       @atheory-ai/skillex-maintainers
+/registry/                     @atheory-ai/skillex-maintainers
+/LICENSE                       @atheory-ai/skillex-maintainers
+/NOTICE                        @atheory-ai/skillex-maintainers
+/DCO                           @atheory-ai/skillex-maintainers
+/CONTRIBUTING.md               @atheory-ai/skillex-maintainers
+
+# Canonical packs: maintainer review required (2 approvals via branch
+# protection; see .github/BRANCH_PROTECTION.md).
+/ecosystems/*/packs/atheory-ai/   @atheory-ai/skillex-maintainers
+
+# Community packs: on acceptance, add a line routing the handle's directory
+# to that handle's owners so they can self-approve subsequent revisions, e.g.
+#   /ecosystems/javascript/packs/alice/   @alice
+#   /ecosystems/javascript/packs/acme-labs/   @acme-labs/maintainers

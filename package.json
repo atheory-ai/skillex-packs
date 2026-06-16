@@ -14,10 +14,15 @@
   "scripts": {
     "doctor": "skillex doctor",
     "refresh": "skillex refresh",
-    "validate": "skillex test"
+    "validate": "skillex test validate",
+    "lint:packs": "node scripts/lint-pack.mjs",
+    "build:pack": "node scripts/build-pack.mjs",
+    "build:manifest": "node scripts/build-manifest.mjs",
+    "check:packs": "node scripts/lint-pack.mjs && node scripts/build-manifest.mjs --check"
   },
   "devDependencies": {
-    "@atheory-ai/skillex": "^0.7.0"
+    "@atheory-ai/skillex": "^0.7.0",
+    "yaml": "^2.9.0"
   },
   "engines": {
     "node": ">=20"
