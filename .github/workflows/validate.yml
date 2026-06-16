@@ -30,5 +30,8 @@ jobs:
         run: npm run build:manifest
 
       # Repo skill test files are well-formed (.specs / skillex convention).
+      # Invoked via node directly rather than the .bin shim: some npm
+      # versions on CI runners don't link the platform-binary wrapper's bin,
+      # though the package itself installs fine.
       - name: Validate skills
-        run: npm run validate
+        run: node node_modules/@atheory-ai/skillex/bin/skillex.js test validate
