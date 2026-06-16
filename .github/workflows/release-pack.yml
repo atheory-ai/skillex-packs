@@ -1,0 +1,86 @@
+name: release-pack
+
+# Publishes one pack when a release tag is pushed:
+#   pack/<name>/v<semver>     e.g. pack/atheory-ai.javascript.tool.example/v0.1.0
+# Steps mirror .specs/05-distribution.md: validate -> deterministic tarball ->
+# SHA256 -> cosign keyless signature -> SLSA provenance -> GitHub Release.
+#
+# NOTE: this workflow can only be fully validated by an actual tag push
+# (the P2 gate's "first test release"). The cosign / provenance wiring is
+# the conventional GitHub-hosted setup; confirm on the first live run.
+
+on:
+  push:
+    tags:
+      - "pack/**"
+
+permissions:
+  contents: write       # create the GitHub Release
+  id-token: write       # cosign keyless OIDC + provenance
+  attestations: write   # SLSA provenance attestation
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"   # pinned: keeps the tarball byte-reproducible
+          cache: npm
+      - run: npm ci
+
+      - name: Parse tag
+        id: tag
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF#refs/tags/pack/}"   # <name>/v<version>
+          echo "name=${ref%/v*}" >> "$GITHUB_OUTPUT"
+          echo "version=${ref##*/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Lint pack
+        run: node scripts/lint-pack.mjs "${{ steps.tag.outputs.name }}"
+
+      - name: Build deterministic tarball
+        id: build
+        run: |
+          set -euo pipefail
+          node scripts/build-pack.mjs "${{ steps.tag.outputs.name }}" --json | tee build.json
+          echo "tarball=$(node -p 'require("./build.json").tarball')" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(node -p 'require("./build.json").sha256')" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag version matches pack.yaml
+        run: |
+          set -euo pipefail
+          built="$(node -p 'require("./build.json").version')"
+          if [ "$built" != "${{ steps.tag.outputs.version }}" ]; then
+            echo "::error::tag version ${{ steps.tag.outputs.version }} != pack.yaml version $built"
+            exit 1
+          fi
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign tarball (keyless)
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes \
+            --output-signature "${{ steps.build.outputs.tarball }}.sig" \
+            --output-certificate "${{ steps.build.outputs.tarball }}.cert" \
+            "${{ steps.build.outputs.tarball }}"
+
+      - name: Generate SLSA provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.build.outputs.tarball }}
+
+      - name: Create GitHub Release with artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          t="${{ steps.build.outputs.tarball }}"
+          gh release create "${GITHUB_REF#refs/tags/}" \
+            --title "${{ steps.tag.outputs.name }} v${{ steps.tag.outputs.version }}" \
+            --notes "Automated release. SHA256: ${{ steps.build.outputs.sha256 }}" \
+            "$t" "$t.sha256" "$t.sig" "$t.cert"

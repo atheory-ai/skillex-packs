@@ -116,6 +116,26 @@ export function readPackYaml(packDir) {
   return parseYaml(raw);
 }
 
+// The exact set of files that ship in a pack's tarball: allowed extensions
+// only (so repo-only governance files like OWNERS are excluded), paths
+// normalized to forward slashes and sorted. Single source of truth for both
+// the manifest builder and the single-pack release builder.
+export function packFileEntries(pack) {
+  const entries = [];
+  for (const file of listFiles(pack.dir)) {
+    if (!ALLOWED_EXTENSIONS.has(extOf(file))) continue;
+    entries.push({ path: relative(pack.dir, file).split(sep).join("/"), data: readFileSync(file) });
+  }
+  return entries.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+// Release artifact naming, mirroring the tag scheme in .specs/05-distribution.md:
+//   pack/<name>/v<version>/<name>-<version>.tar.gz
+export const RELEASE_BASE = `https://github.com/${REGISTRY}/releases/download`;
+export const tarballName = (name, version) => `${name}-${version}.tar.gz`;
+export const tarballUrl = (name, version) =>
+  `${RELEASE_BASE}/pack/${name}/v${version}/${tarballName(name, version)}`;
+
 export function hasSymlink(packDir) {
   for (const f of listFiles(packDir)) {
     if (lstatSync(f).isSymbolicLink()) return relative(packDir, f);

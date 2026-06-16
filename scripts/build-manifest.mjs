@@ -15,8 +15,8 @@ import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  discoverPacks, listFiles, readPackYaml, relative, extOf,
-  ALLOWED_EXTENSIONS, REGISTRY,
+  discoverPacks, readPackYaml, relative, packFileEntries,
+  tarballName, tarballUrl, REGISTRY,
 } from "./lib/packs.mjs";
 import { buildTarGz } from "./lib/tar.mjs";
 
@@ -27,27 +27,12 @@ const outArg = args.indexOf("--out");
 const outPath = join(root, outArg !== -1 ? args[outArg + 1] : "registry/manifest.json");
 const buildDir = join(root, "registry/build");
 
-const RELEASE_BASE = `https://github.com/${REGISTRY}/releases/download`;
-
-function tarballName(name, version) {
-  return `${name}-${version}.tar.gz`;
-}
-function tarballUrl(name, version) {
-  // Mirrors the tag scheme: pack/<name>/v<version>/<name>-<version>.tar.gz
-  return `${RELEASE_BASE}/pack/${name}/v${version}/${tarballName(name, version)}`;
-}
-
 function packEntry(pack) {
   const manifest = readPackYaml(pack.dir);
   const version = String(manifest.version);
 
-  // Deterministic tarball of the pack's allowed files, paths relative to root.
-  const entries = [];
-  for (const file of listFiles(pack.dir)) {
-    if (!ALLOWED_EXTENSIONS.has(extOf(file))) continue;
-    entries.push({ path: relative(pack.dir, file).split("\\").join("/"), data: readFileSync(file) });
-  }
-  const { gz, sha256, size } = buildTarGz(entries);
+  // Deterministic tarball of the pack's shippable files.
+  const { gz, sha256, size } = buildTarGz(packFileEntries(pack));
 
   if (!checkOnly) {
     const dest = join(buildDir, "pack", pack.name, `v${version}`);
