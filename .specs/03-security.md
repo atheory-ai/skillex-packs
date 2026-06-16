@@ -10,11 +10,11 @@ below.
 
 | Threat | Realistic? | Mitigation |
 |---|---|---|
-| **Attacker pushes malicious commit to this repo** | Yes — any contributor with bypass-able rules | Branch protection, required reviews, signed commits, no force-push to `main`, CODEOWNERS for `core/**` |
+| **Attacker pushes malicious commit to this repo** | Yes — any contributor with bypass-able rules | Branch protection, required reviews, signed commits, no force-push to `main`, CODEOWNERS for `packs/atheory-ai/**` |
 | **Attacker compromises a maintainer's GitHub account** | Yes — phishing, token leak | Required 2FA on the org, short-lived OIDC tokens for CI, hardware key for release signing |
 | **Attacker tampers with built artifacts in transit (registry → user)** | Yes — DNS, MITM, GitHub release upload race | All artifacts SHA256-pinned in a **signed** manifest; engine verifies signature before consuming |
 | **Attacker substitutes a pack tarball after publish** | Yes — registry compromise, CDN poisoning | Manifest pins SHA256 per tarball; engine refuses on mismatch |
-| **Attacker registers a typosquat in `community.*`** | Yes — `core.node.lang.javascripr` | Reserved prefix check; trust-tier UI; auto-detect homoglyphs on PR; require human review for new top-level community names |
+| **Attacker squats or impersonates a handle** | Yes — a look-alike `vercel`, or claiming `atheory-ai.*` | Handle ownership verified against GitHub (PR author owns the user/org); reserved-handle list (`atheory-ai`, `core`, `official`, …); homoglyph check on the handle segment; trust-tier UI; human review for any new handle's first pack |
 | **Pack content contains a prompt-injection payload** | Yes — community lane is the path | Mandatory schema validation; "show me what changes" diff preview on install; agent-side hardening guidelines published alongside the registry |
 | **Pack adds an `activates-when` rule that silently matches everything** | Yes — accident more often than malice | Activation rules validated; warn on over-broad globs in CI; engine reports activated files at install time so user sees scope |
 | **Stale dependency in a tool we ship for validation** | Yes | Renovate / dependabot on devDependencies; `npm audit --omit=dev=false` in CI |
@@ -75,11 +75,16 @@ for launch.
 
 Mandatory on this repo from day one:
 
-- `main` requires PRs, 1 required review (2 for `core/**` via CODEOWNERS),
-  passing CI, signed commits.
+- `main` requires PRs, 1 required review (2 for `packs/atheory-ai/**` via
+  CODEOWNERS), passing CI, signed commits.
 - No force-push to `main` or to `pack/*` release tags.
-- Tags matching `pack/core.*` are protected — only the release workflow
-  can create them, via a deploy environment with a manual approval gate.
+- Tags matching `pack/atheory-ai.*` are protected — only the release
+  workflow can create them, via a deploy environment with a manual
+  approval gate.
+- CI rejects any pack whose `handle` segment is not owned by the PR author
+  (GitHub login or verified org membership), and rejects any non-maintainer
+  claim on a reserved handle (`atheory-ai`, `core`, `official`, …).
+  See `01-naming-and-structure.md`, "Handle ownership & verification".
 - All maintainers in the `@atheory-ai/skillex-maintainers` team must have
   2FA enforced at the org level.
 - Org secrets used by CI (npm token for any sibling publish, cosign
@@ -120,15 +125,46 @@ mitigate at three layers:
 - Time-to-mitigation goal: < 24h for critical (publicly exploitable
   prompt-injection), < 7d for high.
 
-## Open questions
+## Resolved
 
-- Do we want to require a **two-of-N** signing model for `core.*` releases
-  (i.e. cosign signatures from two distinct maintainers)? Adds friction;
-  worth it if we ever ship core packs that gate sensitive workflows.
-- Should the manifest carry a **freshness window** (e.g. "valid for 30
-  days from `generatedAt`") so the engine can warn on stale local cache?
-  Yes for v1 but enforcement is advisory only — we don't want offline
-  installs to break.
-- Should we publish the cosign verification key out-of-band (e.g. in
-  `@atheory-ai/skillex` engine itself) so install can be done in pure
-  air-gapped mode against a vendored manifest? Probably yes; cheap to do.
+- **Bundle the verification identity + sigstore trusted root in the
+  engine.** The trusted signing identity is shipped *out-of-band* inside
+  the `@atheory-ai/skillex` engine package (npm), a different channel from
+  the registry (GitHub Releases) it verifies. The engine carries:
+  - the **expected keyless identity** — OIDC issuer
+    `token.actions.githubusercontent.com` + workflow
+    `atheory-ai/skillex-packs/.github/workflows/release.yml@refs/tags/*`, and
+  - the **sigstore trusted root** (Fulcio CA + Rekor keys) needed to
+    validate the signing certificate.
+
+  Rationale: who-may-sign must not come from the thing being verified, or a
+  registry compromise could simply declare itself the valid signer. Pinning
+  it in the engine also enables **fully offline / air-gapped** verification
+  of a vendored manifest (zero network), complementing the vendoring and
+  air-gapped paths in `05-distribution.md`. Implemented with cosign's
+  offline `--trusted-root` bundle, so it's little code.
+
+  Tradeoff accepted: **rotating the pinned identity or root requires an
+  engine release.** That is deliberate — trust changes should be slow and
+  explicit. We document a rotation procedure (bump the bundled identity,
+  cut a `@atheory-ai/skillex` release, advise clients to upgrade) so a key
+  rotation has a known runbook.
+
+- **No two-of-N signing for v1.** Releases are signed by a single cosign
+  keyless identity. A two-maintainer signing requirement is meaningless
+  while the project is effectively one maintainer, and adds friction with
+  no benefit. Revisit if/when (a) there are multiple maintainers and
+  (b) we ship core packs that gate genuinely sensitive workflows.
+- **Freshness is not an integrity property; make it client-configurable.**
+  A signed manifest is authentic no matter how old — staleness does not
+  weaken the signature or the hash pins. The only security-relevant effect
+  of an old manifest is **revocation latency**: a client may not yet see a
+  `revocations.json` entry (or a fixed/improved pack). How much staleness
+  is tolerable is a risk decision that varies by org, so:
+  - The manifest carries `generatedAt` and an advisory `expiresAt`
+    (`05-distribution.md`) as a *suggested* default only.
+  - The actual staleness threshold and behavior (warn vs. force an online
+    refresh before install) are **configurable in `skillex.json`** —
+    enterprises can set it shorter; air-gapped setups can disable it.
+  - Enforcement never breaks offline/vendored installs: with no network,
+    the engine warns about staleness but still installs verified bytes.

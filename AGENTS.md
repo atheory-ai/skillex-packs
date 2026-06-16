@@ -35,10 +35,10 @@ If MCP is not available, query skills via the command line:
 
 ### Available topics
 
-  authoring, packs, repo-conventions
+  authoring, contributing, dco, distribution, naming, packs, registries, releasing, repo-conventions, security, tiers, versioning
 
 ### Available tags
 
-  contributor-guide, getting-started
+  contributor-guide, getting-started, maintainer-guide, security
 
 <!-- skillex:end -->
