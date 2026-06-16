@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-16T19:46:44.475Z",
+  "generatedAt": "2026-06-16T23:10:37.056Z",
   "registry": "atheory-ai/skillex-packs",
   "packs": [
     {
@@ -20,7 +20,7 @@
       },
       "tarball": {
         "url": "https://github.com/atheory-ai/skillex-packs/releases/download/pack/atheory-ai.javascript.tool.example/v0.1.0/atheory-ai.javascript.tool.example-0.1.0.tar.gz",
-        "sha256": "a44a97039694d8c9870434a78ac10944293f7ddbf1e712840771a4580ca8bd02",
+        "sha256": "2b9b24f1c7e8dc3d1b92b6db15aceb4eadad94b37af9559c12dbf539bd97a53d",
         "size": 882
       }
     }

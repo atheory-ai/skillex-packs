@@ -4,8 +4,13 @@
 //   - entries sorted by path
 //   - mtime = 0, uid/gid = 0, fixed mode, empty uname/gname
 //   - gzip with a zeroed mtime header
-// The same inputs always produce byte-identical output, so the SHA256 is
-// stable across machines and CI.
+// The TAR payload is byte-identical given identical inputs. The gzip wrapper,
+// however, depends on the bundled zlib version, so the final .tar.gz (and its
+// SHA256) is only reproducible on a *pinned* toolchain — not across arbitrary
+// machines. That's fine: the registry treats CI as the source of truth and
+// records each manifest SHA from the actual published release asset (see
+// build-manifest.mjs --from-releases), so reproducibility is an audit bonus,
+// not a correctness requirement.
 
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
