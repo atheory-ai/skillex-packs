@@ -37,7 +37,7 @@ packs so that:
 |---|---|---|
 | **P0 — Spec freeze** | These docs reach consensus. Pack manifest schema (`pack.yaml` v1) is locked. | Spec PR review by atheory-ai |
 | **P1 — Engine read path** | Engine repo: `skillex packs available / install / list / remove` commands; manifest fetch + verify; consent prompt; uninstall path; plural `registries[]` config with precedence + policy filtering + handle→root trust binding (`06-registries-and-federation.md`). | Acceptance fixtures in engine repo |
-| **P2 — Registry plumbing** | This repo: validate / build / sign / publish scripts; CI that produces a signed manifest on every tag; all discovery surfaces (Release + raw + `packs.skillex.dev` Worker + GitHub Pages index — see `05-distribution.md`). | First test release `v0.0.1` with one toy pack |
+| **P2 — Registry plumbing** | This repo: validate / build / sign / publish scripts; CI that produces a signed manifest on every tag; discovery surfaces (canonical signed Release + `packs.skillex.dev` Worker + GitHub Pages index — no raw `main` copy; see `05-distribution.md`). | First test release `v0.0.1` with one toy pack |
 | **P3 — Canonical seed** | Ship 3–5 canonical packs: `javascript-core`, `nextjs`, `eslint`, `go-core`, `python-core`. | Each pack has skills, tests, owners |
 | **P4 — Community lane** | Contribution template, per-handle CODEOWNERS, DCO sign-off enforcement, security review checklist, automated PR linting. | First merged community pack |
 | **P5 — MCP UX** | Agent-facing tools: `list_available_packs`, `propose_pack_install` with diff preview. | Demo in claude / cursor |
