@@ -10,9 +10,11 @@ name: release-manifest
 # This is the only write path that fits the repo's security posture —
 # immutable releases rule out updating a release, and the Tag Ruleset rules
 # out CI creating new tags — while keeping `main` fully protected
-# (require-PR + signed commits, no bot bypass). A human reviews and
-# squash-merges the PR; GitHub signs the resulting commit on `main`.
-# Pack tarballs stay on their immutable, per-version GitHub Releases.
+# (require-PR + signed commits, no bot bypass). This workflow pushes the
+# signed manifest to a branch and links a PR; a human opens (if org policy
+# bars Actions from creating PRs), reviews, and squash-merges — GitHub signs
+# the resulting commit on `main`. Pack tarballs stay on their immutable,
+# per-version GitHub Releases.
 #
 # First-party only: gh + git + GitHub/Sigstore official actions. No
 # third-party PR actions.
@@ -76,10 +78,24 @@ jobs:
           git commit -s -m "chore(registry): publish manifest ($gen)"
           git push -f origin "$branch"
 
+          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
+          body="Automated manifest build (\`--from-releases\`), cosign-signed. Review and **squash-merge** to publish; GitHub signs the resulting commit on \`main\`. Updates \`registry/manifest.json\` + \`.sig\` + \`.cert\`. (generatedAt: $gen)"
+
+          # Try to open the PR. Org policy commonly forbids Actions from
+          # creating PRs; if so, fall back to printing a one-click link for a
+          # maintainer to open it. Either way a human reviews + squash-merges.
           if gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
-            echo "Existing manifest PR updated."
+            echo "Existing manifest PR updated → $url"
+          elif gh pr create --base main --head "$branch" --title "Publish registry manifest" --body "$body" 2>/dev/null; then
+            echo "Opened manifest PR."
           else
-            gh pr create --base main --head "$branch" \
-              --title "Publish registry manifest" \
-              --body "Automated manifest build (\`--from-releases\`), cosign-signed. Review and **squash-merge** to publish; GitHub signs the resulting commit on \`main\`. Updates \`registry/manifest.json\` + \`.sig\` + \`.cert\`. (generatedAt: $gen)"
+            echo "::notice::Actions can't auto-open PRs here (org policy). Open the publish PR: $url"
           fi
+
+          {
+            echo "## Signed manifest ready to publish"
+            echo ""
+            echo "Branch \`$branch\` updated (generatedAt \`$gen\`)."
+            echo ""
+            echo "👉 [Open the publish PR]($url) — review and squash-merge."
+          } >> "$GITHUB_STEP_SUMMARY"
