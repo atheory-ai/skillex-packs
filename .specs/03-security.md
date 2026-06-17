@@ -50,10 +50,12 @@ Engine install path:
 fetch manifest.json + signature bundle
   └─ verify cosign signature against the expected issuer
      (https://token.actions.githubusercontent.com → atheory-ai/skillex-packs)
-     and the expected workflow path (.github/workflows/release.yml@refs/tags/*)
+     and the manifest signer workflow (.github/workflows/release-manifest.yml)
   └─ for each pack the user wants:
        fetch tarball
-       verify SHA256 against manifest entry
+       verify SHA256 against manifest entry   # the signed manifest is the pin
+       (optional) verify the tarball's own cosign sig + SLSA provenance,
+         signer workflow .github/workflows/release-pack.yml
        extract under .skillex/packs/<name>@<version>/
        enforce file allowlist during extraction
        refuse symlinks and absolute paths in archive
@@ -130,12 +132,18 @@ mitigate at three layers:
 - **Bundle the verification identity + sigstore trusted root in the
   engine.** The trusted signing identity is shipped *out-of-band* inside
   the `@atheory-ai/skillex` engine package (npm), a different channel from
-  the registry (GitHub Releases) it verifies. The engine carries:
-  - the **expected keyless identity** — OIDC issuer
-    `token.actions.githubusercontent.com` + workflow
-    `atheory-ai/skillex-packs/.github/workflows/release.yml@refs/tags/*`, and
+  the registry it verifies. The engine carries:
+  - the **expected keyless identities** — OIDC issuer
+    `token.actions.githubusercontent.com` plus the two signer workflows:
+    `…/.github/workflows/release-manifest.yml` (signs the manifest) and
+    `…/.github/workflows/release-pack.yml` (signs pack tarballs), and
   - the **sigstore trusted root** (Fulcio CA + Rekor keys) needed to
     validate the signing certificate.
+
+  The same manifest-signer identity is enforced **at merge time** by the
+  `validate` workflow (it `cosign verify-blob`s the committed manifest), so a
+  hand-edited manifest fails CI and never reaches `main` — see
+  `05-distribution.md`, "Manifest publishing".
 
   Rationale: who-may-sign must not come from the thing being verified, or a
   registry compromise could simply declare itself the valid signer. Pinning

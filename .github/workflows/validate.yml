@@ -40,3 +40,27 @@ jobs:
       # though the package itself installs fine.
       - name: Validate skills
         run: node node_modules/@atheory-ai/skillex/bin/skillex.js test validate
+
+      # Tamper guard: if a signed manifest is committed, it MUST still verify
+      # against its committed signature and have been produced by the
+      # release-manifest workflow. A hand-edited manifest can't satisfy this
+      # (its signature won't match, and a human can't sign as that workflow
+      # identity), so such a PR fails here and cannot merge. Defense-in-depth
+      # alongside the engine's per-fetch verification (.specs/03-security.md,
+      # .specs/05-distribution.md). Skipped until the first signed manifest
+      # lands (bootstrap).
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Verify committed manifest signature
+        run: |
+          set -euo pipefail
+          if [ ! -f registry/manifest.json.sig ]; then
+            echo "No committed manifest signature yet (bootstrap); skipping."
+            exit 0
+          fi
+          cosign verify-blob \
+            --certificate registry/manifest.json.cert \
+            --signature registry/manifest.json.sig \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp '^https://github\.com/atheory-ai/skillex-packs/\.github/workflows/release-manifest\.yml@' \
+            registry/manifest.json
