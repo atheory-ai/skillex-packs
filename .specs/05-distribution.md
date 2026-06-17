@@ -6,7 +6,7 @@
 |---|---|---|
 | Pack tarball | GitHub Release of this repo | `github.com/atheory-ai/skillex-packs/releases/download/pack/<name>/v<ver>/<name>-<ver>.tar.gz` |
 | Tarball checksum | Same release | `…/<name>-<ver>.tar.gz.sha256` |
-| Registry manifest | GitHub Release `manifest/v<n>` **or** `raw.githubusercontent.com/atheory-ai/skillex-packs/main/registry/manifest.json` | both |
+| Registry manifest | GitHub Release `manifest/v<n>` (canonical) | discovery via `packs.skillex.dev` |
 | Manifest signature bundle | Same place as manifest | `manifest.json.sig`, `manifest.json.cert` |
 | SLSA attestation | Same release | `<name>-<ver>.intoto.jsonl` |
 
@@ -195,29 +195,41 @@ handle→root trust binding. See `06-registries-and-federation.md`.
 
 ## Discovery surfaces
 
-The manifest is reachable four ways, each with a defined role. All serve
-the *same* signed `manifest.json`; only the path differs. All four ship in
-v1.
+Consumption is **agent/tool**, not human, and every consumer verifies the
+cosign signature before trusting bytes — so the manifest only needs to be
+reachable in forms that lead to the *signed* artifact. Three surfaces:
 
 | Surface | URL | Role | Trust |
 |---|---|---|---|
 | **GitHub Release** `manifest/v<n>` | `…/releases/download/manifest/v<n>/manifest.json` (+ `.sig`, `.cert`) | **Canonical** — what the engine verifies and installs from | Immutable per `v<n>`, signed |
-| **Raw on `main`** | `raw.githubusercontent.com/atheory-ai/skillex-packs/main/registry/manifest.json` | Fast-discovery fallback / "what's newest" | Advisory — signed but mutable; re-verified before trust |
-| **Discovery endpoint** | `https://packs.skillex.dev/manifest.json` (Cloudflare Worker) | Memorable, stable URL for humans / integrations; proxies the canonical Release | Advisory — verified like any fetch |
-| **Browsable index** | GitHub Pages site on this repo | Human-facing: search/filter packs by ecosystem, tier, owner | Informational only; not an install source |
+| **Discovery endpoint** | `https://packs.skillex.dev/manifest.json` (Cloudflare Worker) | **Primary tool/agent discovery**: a stable, CDN-fronted, no-auth URL serving the latest manifest + signature | Advisory *transport* — verified per-fetch |
+| **Browsable index** | GitHub Pages site on this repo | The **human** surface: search/filter packs by ecosystem, tier, owner | Informational only; not an install source |
 
-What keeps this safe regardless of surface:
+There is deliberately **no raw `registry/manifest.json` on `main`** as a
+consumption surface. It served no consumer cleanly: the engine must fetch
+the signature too (which doesn't sit next to a raw file), and humans use the
+index, not raw JSON. Dropping it also means **CI never writes to `main`** —
+no protected-branch / signed-commit dance for an advisory copy.
+
+What keeps this safe:
 
 - **Signature verification is per-fetch, not per-source.** Whatever URL the
   bytes came from, the engine verifies the cosign signature against the
   identity bundled in the engine (`03-security.md`) before trusting
-  anything. "Advisory" only means we don't *promise* immutability there —
-  it cannot downgrade integrity, because a missing/mismatched signature is
-  rejected wherever the bytes originated.
-- **The engine defaults to the Release** for installs and may use the raw /
-  worker URLs for discovery speed; all are overridable via the configurable
-  registry endpoint in `skillex.json` (see Air-gapped / private use).
-- The Pages site and the Worker are **conveniences**, never the root of
-  trust — both are rebuildable from the repo at any time. The Worker adds
-  one domain (`packs.skillex.dev`) to maintain; accepted as the cost of a
-  memorable, CDN-fronted discovery URL.
+  anything. An "advisory transport" (the Worker) therefore cannot downgrade
+  integrity — a missing/mismatched signature is rejected wherever the bytes
+  originated.
+- **The engine installs from the canonical Release** and resolves "latest"
+  through the discovery endpoint; both are overridable via the configurable
+  registry list in `skillex.json` (see Air-gapped / private use and
+  `06-registries-and-federation.md`).
+- The Worker and Pages site are **conveniences**, never the root of trust —
+  both are rebuildable from the repo and its Releases at any time.
+
+### Finding "latest" before the Worker exists
+
+The Worker is what makes discovery scale (CDN, no auth, no rate limit).
+Until it is stood up, the engine resolves the newest `manifest/v<n>` by
+querying the GitHub Releases API — fine for development, but rate-limited
+(~60 req/hr unauthenticated). That rate limit is precisely why the CDN
+endpoint, not the Releases API, is the discovery mechanism at scale.
