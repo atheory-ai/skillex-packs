@@ -21,6 +21,11 @@ jobs:
           cache: npm
       - run: npm ci
 
+      # Unit/integration tests for the registry tooling (lint gate, tarball
+      # determinism, manifest builder).
+      - name: Test tooling
+        run: npm test
+
       # Pack security / content / naming gate (.specs/03 + 04).
       - name: Lint packs
         run: npm run lint:packs

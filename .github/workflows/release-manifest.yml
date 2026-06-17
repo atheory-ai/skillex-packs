@@ -1,0 +1,63 @@
+name: release-manifest
+
+# Publishes the signed registry manifest. Runs after a pack release completes
+# (and on demand). The manifest's SHA256s are sourced from the actual
+# published release assets (build-manifest --from-releases), so the manifest
+# provably matches what consumers download — independent of build determinism.
+#
+# Canonical output: a cosign-signed `manifest/v<n>` GitHub Release
+# (manifest.json + .sig + .cert), which the engine verifies and installs from
+# (.specs/05-distribution.md). Updating the advisory raw copy on `main` is a
+# follow-up keyed to branch protection (require-PR / require-signed-commits).
+
+on:
+  workflow_run:
+    workflows: [release-pack]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the manifest Release
+  id-token: write   # cosign keyless
+
+jobs:
+  publish:
+    # Only after a successful pack release (or a manual run).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+
+      - name: Build manifest from published release assets
+        run: npm run build:manifest -- --from-releases
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign manifest (keyless)
+        run: |
+          cosign sign-blob --yes \
+            --output-signature registry/manifest.json.sig \
+            --output-certificate registry/manifest.json.cert \
+            registry/manifest.json
+
+      - name: Publish signed manifest release
+        run: |
+          set -euo pipefail
+          n=$(( $(gh release list --limit 1000 --json tagName \
+                  --jq '[.[] | select(.tagName | startswith("manifest/v"))] | length') + 1 ))
+          tag="manifest/v${n}"
+          echo "Publishing $tag"
+          gh release create "$tag" \
+            --title "Registry manifest v${n}" \
+            --notes "Signed registry manifest. Generated $(date -u +%FT%TZ)." \
+            registry/manifest.json \
+            registry/manifest.json.sig \
+            registry/manifest.json.cert

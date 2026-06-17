@@ -15,6 +15,7 @@
     "doctor": "skillex doctor",
     "refresh": "skillex refresh",
     "validate": "skillex test validate",
+    "test": "node --test test/*.test.mjs",
     "lint:packs": "node scripts/lint-pack.mjs",
     "build:pack": "node scripts/build-pack.mjs",
     "build:manifest": "node scripts/build-manifest.mjs",
