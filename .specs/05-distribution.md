@@ -6,8 +6,8 @@
 |---|---|---|
 | Pack tarball | GitHub Release of this repo | `github.com/atheory-ai/skillex-packs/releases/download/pack/<name>/v<ver>/<name>-<ver>.tar.gz` |
 | Tarball checksum | Same release | `…/<name>-<ver>.tar.gz.sha256` |
-| Registry manifest | GitHub Release `manifest` (single, canonical; assets clobbered) | discovery via `packs.skillex.dev` |
-| Manifest signature bundle | Same place as manifest | `manifest.json.sig`, `manifest.json.cert` |
+| Registry manifest | Version-controlled on `main` (canonical) | `raw.githubusercontent.com/atheory-ai/skillex-packs/main/registry/manifest.json`; CDN via `packs.skillex.dev` |
+| Manifest signature bundle | Beside the manifest on `main` | `registry/manifest.json.sig`, `registry/manifest.json.cert` |
 | SLSA attestation | Same release | `<name>-<ver>.intoto.jsonl` |
 
 We deliberately stay on GitHub. Reasons in `00-overview.md` and prior
@@ -40,33 +40,38 @@ CI workflow `release-pack.yml` triggers on these tags:
 4. Signs with cosign keyless OIDC.
 5. Uploads tarball + checksum + signature + SLSA attestation to a
    GitHub Release named after the tag.
-6. Updates `registry/manifest.json` via a follow-up commit to `main`
-   (or to a release branch then PR), then triggers `release-manifest.yml`.
+6. Triggers `release-manifest.yml`, which proposes the manifest update as a
+   reviewed PR to `main` (below).
 
-The manifest is **not** tagged per version. It is published to a single
-long-lived `manifest` GitHub Release whose assets are clobbered on each
-publish:
+### Manifest publishing — a reviewed PR to `main`
 
-```
-manifest                  # one release/tag, created once by an admin
-  manifest.json           # assets replaced on every publish
-  manifest.json.sig
-  manifest.json.cert
-```
+The manifest is a **version-controlled artifact on `main`**
+(`registry/manifest.json` + `.sig` + `.cert`), updated via a reviewed pull
+request — not a GitHub Release. This is the only write path that fits the
+repo's security posture:
 
-CI never creates tags (the repo's Tag Ruleset restricts creation and
-requires signed tags); it only uploads assets to the pre-existing `manifest`
-release. `manifest.generatedAt` identifies a given build. Per-version
-immutability is not needed at the manifest level — pack tarballs are
-SHA-pinned and immutable regardless (see `.github/BRANCH_PROTECTION.md` for
-the one-time admin setup).
+- **Immutable releases** (org setting) rule out *updating* a release's
+  assets, and the **Tag Ruleset** rules out CI *creating* a new tag per
+  publish. So Releases can't host a manifest that changes over time.
+- Committing to `main` keeps it fully protected (require-PR + signed
+  commits, no bot bypass) and version-controlled (diffable, revertable).
+
+Flow (`release-manifest.yml`): build `--from-releases` → cosign-sign →
+push a `bot/manifest-update` branch → open a PR. A maintainer **reviews and
+squash-merges**; GitHub signs the resulting commit on `main`, satisfying
+require-signed-commits with no key on the runner and no bypass. The PR is
+the deliberate "publish this manifest" checkpoint. (First-party only:
+`gh` + `git`, no third-party PR action.)
+
+Pack **tarballs** stay on their immutable, per-version GitHub Releases —
+create-once, never-updated, fine under both rulesets.
 
 ## Registry manifest
 
 `registry/manifest.json` is the **single source of truth** for what's
-installable. The engine fetches it (default: from the `manifest` release;
-cached locally), verifies its signature, then intersects against the local
-project.
+installable. The engine fetches it (default: the copy on `main`, via the
+CDN/raw URL below; cached locally), verifies its cosign signature, then
+intersects against the local project.
 
 Schema sketch (locked in v1 — see open questions):
 
@@ -211,17 +216,20 @@ Consumption is **agent/tool**, not human, and every consumer verifies the
 cosign signature before trusting bytes — so the manifest only needs to be
 reachable in forms that lead to the *signed* artifact. Three surfaces:
 
+The manifest is a signed file on `main`; consumers read it from there (or a
+CDN in front of it) and verify the cosign signature. Three surfaces:
+
 | Surface | URL | Role | Trust |
 |---|---|---|---|
-| **GitHub Release** `manifest` | `…/releases/download/manifest/manifest.json` (+ `.sig`, `.cert`) | **Canonical** — what the engine verifies and installs from | Single release, assets clobbered per publish, signed |
-| **Discovery endpoint** | `https://packs.skillex.dev/manifest.json` (Cloudflare Worker) | **Primary tool/agent discovery**: a stable, CDN-fronted, no-auth URL serving the latest manifest + signature | Advisory *transport* — verified per-fetch |
+| **Manifest on `main`** | `raw.githubusercontent.com/atheory-ai/skillex-packs/main/registry/manifest.json` (+ `.sig`, `.cert`) | **Canonical** — the version-controlled, reviewed, signed source the engine verifies and installs from | Updated only via reviewed PR; cosign-signed |
+| **Discovery endpoint** | `https://packs.skillex.dev/manifest.json` (Cloudflare Worker) | **Primary tool/agent discovery at scale**: a stable, CDN-fronted, no-auth URL fronting the `main` copy | Advisory *transport* — verified per-fetch |
 | **Browsable index** | GitHub Pages site on this repo | The **human** surface: search/filter packs by ecosystem, tier, owner | Informational only; not an install source |
 
-There is deliberately **no raw `registry/manifest.json` on `main`** as a
-consumption surface. It served no consumer cleanly: the engine must fetch
-the signature too (which doesn't sit next to a raw file), and humans use the
-index, not raw JSON. Dropping it also means **CI never writes to `main`** —
-no protected-branch / signed-commit dance for an advisory copy.
+The signature sits **beside** the manifest (`.sig` + `.cert` committed next
+to it), so any surface — raw `main` or the CDN — yields a fully verifiable
+bundle. (This is what the earlier "raw on `main`" idea lacked; here the file
+is both *signed* and published through a reviewed path, so it is the
+canonical source rather than an unsigned advisory copy.)
 
 What keeps this safe:
 
@@ -231,18 +239,15 @@ What keeps this safe:
   anything. An "advisory transport" (the Worker) therefore cannot downgrade
   integrity — a missing/mismatched signature is rejected wherever the bytes
   originated.
-- **The engine installs from the canonical Release** and resolves "latest"
-  through the discovery endpoint; both are overridable via the configurable
-  registry list in `skillex.json` (see Air-gapped / private use and
-  `06-registries-and-federation.md`).
-- The Worker and Pages site are **conveniences**, never the root of trust —
-  both are rebuildable from the repo and its Releases at any time.
+- **`main` is the root of trust** for the manifest: it can only change via a
+  reviewed, checks-passing, signed-commit PR. The Worker and Pages site are
+  **conveniences** that front it, never the source of truth.
+- Both are overridable via the configurable registry list in `skillex.json`
+  (see Air-gapped / private use and `06-registries-and-federation.md`).
 
 ### Discovery before the Worker exists
 
 The Worker is what makes discovery scale (CDN, no auth, no rate limit).
-Until it is stood up, the engine reads the `manifest` release's assets
-directly (the release download URL, or the GitHub Releases API) — fine for
-development, but the API path is rate-limited (~60 req/hr unauthenticated).
-That rate limit is precisely why the CDN endpoint, not the raw Releases API,
-is the discovery mechanism at scale.
+Until it is stood up, the engine reads the manifest straight from the raw
+`main` URL above — no GitHub API, no rate limit, always current. The Worker
+later just puts a CDN and a memorable domain in front of the same file.

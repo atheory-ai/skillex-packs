@@ -5,13 +5,17 @@ name: release-manifest
 # published release assets (build-manifest --from-releases), so the manifest
 # provably matches what consumers download — independent of build determinism.
 #
-# Canonical output: a single long-lived `manifest` GitHub Release whose assets
-# (manifest.json + .sig + .cert) are clobbered on every publish. CI never
-# CREATES tags — that respects the repo's Tag Ruleset (restrict-creation +
-# require-signed-tags). The `manifest` release/tag is created ONCE by an admin
-# (see .github/BRANCH_PROTECTION.md); thereafter CI only uploads assets.
-# "Latest" is whatever this release currently holds (manifest.generatedAt
-# identifies the build); the engine verifies the cosign signature per fetch.
+# Publishing model: the manifest is a version-controlled artifact on `main`
+# (registry/manifest.json + .sig + .cert), updated via a **reviewed PR**.
+# This is the only write path that fits the repo's security posture —
+# immutable releases rule out updating a release, and the Tag Ruleset rules
+# out CI creating new tags — while keeping `main` fully protected
+# (require-PR + signed commits, no bot bypass). A human reviews and
+# squash-merges the PR; GitHub signs the resulting commit on `main`.
+# Pack tarballs stay on their immutable, per-version GitHub Releases.
+#
+# First-party only: gh + git + GitHub/Sigstore official actions. No
+# third-party PR actions.
 
 on:
   workflow_run:
@@ -20,11 +24,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # upload assets to the manifest Release
-  id-token: write   # cosign keyless
+  contents: write        # push the bot branch
+  pull-requests: write   # open the manifest PR
+  id-token: write        # cosign keyless
 
 jobs:
-  publish:
+  propose:
     # Only after a successful pack release (or a manual run).
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
@@ -51,20 +56,30 @@ jobs:
             --output-certificate registry/manifest.json.cert \
             registry/manifest.json
 
-      - name: Publish signed manifest (clobber the 'manifest' release assets)
+      - name: Open / update the manifest PR
         run: |
           set -euo pipefail
-          # CI does not create tags (Tag Ruleset). The 'manifest' release is
-          # created once by an admin; here we only refresh its assets.
-          if ! gh release view manifest >/dev/null 2>&1; then
-            echo "::error::The 'manifest' release does not exist yet."
-            echo "::error::One-time admin step: create a signed tag 'manifest' and a release for it"
-            echo "::error::(see .github/BRANCH_PROTECTION.md), then re-run this workflow."
-            exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          branch="bot/manifest-update"
+          git switch -C "$branch"
+          git add registry/manifest.json registry/manifest.json.sig registry/manifest.json.cert
+
+          if git diff --cached --quiet; then
+            echo "Manifest unchanged; nothing to propose."
+            exit 0
           fi
-          gh release upload manifest \
-            registry/manifest.json \
-            registry/manifest.json.sig \
-            registry/manifest.json.cert \
-            --clobber
-          echo "Updated the 'manifest' release (generatedAt $(node -p 'require("./registry/manifest.json").generatedAt'))."
+
+          gen="$(node -p 'require("./registry/manifest.json").generatedAt')"
+          # -s adds the DCO sign-off so the dco check passes on this PR.
+          git commit -s -m "chore(registry): publish manifest ($gen)"
+          git push -f origin "$branch"
+
+          if gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
+            echo "Existing manifest PR updated."
+          else
+            gh pr create --base main --head "$branch" \
+              --title "Publish registry manifest" \
+              --body "Automated manifest build (\`--from-releases\`), cosign-signed. Review and **squash-merge** to publish; GitHub signs the resulting commit on \`main\`. Updates \`registry/manifest.json\` + \`.sig\` + \`.cert\`. (generatedAt: $gen)"
+          fi

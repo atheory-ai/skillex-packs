@@ -25,14 +25,16 @@ tags** (OrgAdmin bypass only). CI therefore never creates tags. This implies:
 - **Pack releases:** a maintainer/admin creates the signed `pack/<name>/v<x>`
   tag (this triggers `release-pack`, which only *attaches* a release to the
   existing tag — no creation by CI).
-- **Manifest releases:** the `manifest` release uses a single long-lived tag.
-  Create it **once**:
-  - [ ] As an admin, create a signed tag named `manifest` (e.g.
-        `git tag -s manifest -m "registry manifest" && git push origin manifest`)
-        and a GitHub Release for it.
-  - Thereafter `release-manifest` only **clobbers that release's assets** —
-    no tag creation, so it stays within the ruleset.
-- [ ] Keep no-force-push / no-delete on `pack/*` and `manifest`.
+- **Manifest:** published as a file on `main` via a **reviewed PR**, not a
+  release (immutable releases rule out updating one; the Tag Ruleset rules
+  out creating one). `release-manifest` builds + cosign-signs and opens a
+  PR; a maintainer reviews and **squash-merges** (GitHub signs the resulting
+  commit). The `main` branch protection above (require-PR + approval +
+  signed commits) is the gate — no extra setup needed.
+  - The `manifest` tag/release created during earlier iteration is now
+    **vestigial**; nothing uses it. Leave it, or have an admin delete it
+    (tag deletion is blocked by the ruleset for non-admins).
+- [ ] Keep no-force-push / no-delete on `pack/*` tags.
 
 ## Organization
 
