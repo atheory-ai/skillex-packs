@@ -1,3 +1,4 @@
+
 # Branch protection & repo settings
 
 These cannot be expressed as files — they are GitHub settings. This is the
@@ -16,11 +17,22 @@ CI workflows (`validate`, `dco`) enforce the rest.
 - [ ] Require branches to be up to date before merging.
 - [ ] Do not allow force-pushes; do not allow deletions.
 
-## Tag protection
+## Tag protection (Tag Ruleset)
 
-- [ ] Protect tags matching `pack/*` and `manifest/*` (no force-push/delete).
-- [ ] Restrict creation of `pack/atheory-ai.*` and `manifest/*` tags to the
-      release workflow via a deploy environment with a manual approval gate.
+The active "Tag Ruleset" restricts tag **creation** and requires **signed
+tags** (OrgAdmin bypass only). CI therefore never creates tags. This implies:
+
+- **Pack releases:** a maintainer/admin creates the signed `pack/<name>/v<x>`
+  tag (this triggers `release-pack`, which only *attaches* a release to the
+  existing tag — no creation by CI).
+- **Manifest releases:** the `manifest` release uses a single long-lived tag.
+  Create it **once**:
+  - [ ] As an admin, create a signed tag named `manifest` (e.g.
+        `git tag -s manifest -m "registry manifest" && git push origin manifest`)
+        and a GitHub Release for it.
+  - Thereafter `release-manifest` only **clobbers that release's assets** —
+    no tag creation, so it stays within the ruleset.
+- [ ] Keep no-force-push / no-delete on `pack/*` and `manifest`.
 
 ## Organization
 

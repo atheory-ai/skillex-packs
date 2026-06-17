@@ -6,7 +6,7 @@
 |---|---|---|
 | Pack tarball | GitHub Release of this repo | `github.com/atheory-ai/skillex-packs/releases/download/pack/<name>/v<ver>/<name>-<ver>.tar.gz` |
 | Tarball checksum | Same release | `…/<name>-<ver>.tar.gz.sha256` |
-| Registry manifest | GitHub Release `manifest/v<n>` (canonical) | discovery via `packs.skillex.dev` |
+| Registry manifest | GitHub Release `manifest` (single, canonical; assets clobbered) | discovery via `packs.skillex.dev` |
 | Manifest signature bundle | Same place as manifest | `manifest.json.sig`, `manifest.json.cert` |
 | SLSA attestation | Same release | `<name>-<ver>.intoto.jsonl` |
 
@@ -43,18 +43,30 @@ CI workflow `release-pack.yml` triggers on these tags:
 6. Updates `registry/manifest.json` via a follow-up commit to `main`
    (or to a release branch then PR), then triggers `release-manifest.yml`.
 
-Manifest releases use:
+The manifest is **not** tagged per version. It is published to a single
+long-lived `manifest` GitHub Release whose assets are clobbered on each
+publish:
 
 ```
-manifest/v<n>             # n is monotonic, incremented per publish
+manifest                  # one release/tag, created once by an admin
+  manifest.json           # assets replaced on every publish
+  manifest.json.sig
+  manifest.json.cert
 ```
+
+CI never creates tags (the repo's Tag Ruleset restricts creation and
+requires signed tags); it only uploads assets to the pre-existing `manifest`
+release. `manifest.generatedAt` identifies a given build. Per-version
+immutability is not needed at the manifest level — pack tarballs are
+SHA-pinned and immutable regardless (see `.github/BRANCH_PROTECTION.md` for
+the one-time admin setup).
 
 ## Registry manifest
 
 `registry/manifest.json` is the **single source of truth** for what's
-installable. Engine fetches it (default: from the latest
-`manifest/v<n>` release; cached locally), verifies its signature, then
-intersects against the local project.
+installable. The engine fetches it (default: from the `manifest` release;
+cached locally), verifies its signature, then intersects against the local
+project.
 
 Schema sketch (locked in v1 — see open questions):
 
@@ -201,7 +213,7 @@ reachable in forms that lead to the *signed* artifact. Three surfaces:
 
 | Surface | URL | Role | Trust |
 |---|---|---|---|
-| **GitHub Release** `manifest/v<n>` | `…/releases/download/manifest/v<n>/manifest.json` (+ `.sig`, `.cert`) | **Canonical** — what the engine verifies and installs from | Immutable per `v<n>`, signed |
+| **GitHub Release** `manifest` | `…/releases/download/manifest/manifest.json` (+ `.sig`, `.cert`) | **Canonical** — what the engine verifies and installs from | Single release, assets clobbered per publish, signed |
 | **Discovery endpoint** | `https://packs.skillex.dev/manifest.json` (Cloudflare Worker) | **Primary tool/agent discovery**: a stable, CDN-fronted, no-auth URL serving the latest manifest + signature | Advisory *transport* — verified per-fetch |
 | **Browsable index** | GitHub Pages site on this repo | The **human** surface: search/filter packs by ecosystem, tier, owner | Informational only; not an install source |
 
@@ -226,10 +238,11 @@ What keeps this safe:
 - The Worker and Pages site are **conveniences**, never the root of trust —
   both are rebuildable from the repo and its Releases at any time.
 
-### Finding "latest" before the Worker exists
+### Discovery before the Worker exists
 
 The Worker is what makes discovery scale (CDN, no auth, no rate limit).
-Until it is stood up, the engine resolves the newest `manifest/v<n>` by
-querying the GitHub Releases API — fine for development, but rate-limited
-(~60 req/hr unauthenticated). That rate limit is precisely why the CDN
-endpoint, not the Releases API, is the discovery mechanism at scale.
+Until it is stood up, the engine reads the `manifest` release's assets
+directly (the release download URL, or the GitHub Releases API) — fine for
+development, but the API path is rate-limited (~60 req/hr unauthenticated).
+That rate limit is precisely why the CDN endpoint, not the raw Releases API,
+is the discovery mechanism at scale.

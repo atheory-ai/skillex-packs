@@ -5,10 +5,13 @@ name: release-manifest
 # published release assets (build-manifest --from-releases), so the manifest
 # provably matches what consumers download — independent of build determinism.
 #
-# Canonical output: a cosign-signed `manifest/v<n>` GitHub Release
-# (manifest.json + .sig + .cert), which the engine verifies and installs from
-# (.specs/05-distribution.md). Updating the advisory raw copy on `main` is a
-# follow-up keyed to branch protection (require-PR / require-signed-commits).
+# Canonical output: a single long-lived `manifest` GitHub Release whose assets
+# (manifest.json + .sig + .cert) are clobbered on every publish. CI never
+# CREATES tags — that respects the repo's Tag Ruleset (restrict-creation +
+# require-signed-tags). The `manifest` release/tag is created ONCE by an admin
+# (see .github/BRANCH_PROTECTION.md); thereafter CI only uploads assets.
+# "Latest" is whatever this release currently holds (manifest.generatedAt
+# identifies the build); the engine verifies the cosign signature per fetch.
 
 on:
   workflow_run:
@@ -17,7 +20,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # create the manifest Release
+  contents: write   # upload assets to the manifest Release
   id-token: write   # cosign keyless
 
 jobs:
@@ -48,16 +51,20 @@ jobs:
             --output-certificate registry/manifest.json.cert \
             registry/manifest.json
 
-      - name: Publish signed manifest release
+      - name: Publish signed manifest (clobber the 'manifest' release assets)
         run: |
           set -euo pipefail
-          n=$(( $(gh release list --limit 1000 --json tagName \
-                  --jq '[.[] | select(.tagName | startswith("manifest/v"))] | length') + 1 ))
-          tag="manifest/v${n}"
-          echo "Publishing $tag"
-          gh release create "$tag" \
-            --title "Registry manifest v${n}" \
-            --notes "Signed registry manifest. Generated $(date -u +%FT%TZ)." \
+          # CI does not create tags (Tag Ruleset). The 'manifest' release is
+          # created once by an admin; here we only refresh its assets.
+          if ! gh release view manifest >/dev/null 2>&1; then
+            echo "::error::The 'manifest' release does not exist yet."
+            echo "::error::One-time admin step: create a signed tag 'manifest' and a release for it"
+            echo "::error::(see .github/BRANCH_PROTECTION.md), then re-run this workflow."
+            exit 1
+          fi
+          gh release upload manifest \
             registry/manifest.json \
             registry/manifest.json.sig \
-            registry/manifest.json.cert
+            registry/manifest.json.cert \
+            --clobber
+          echo "Updated the 'manifest' release (generatedAt $(node -p 'require("./registry/manifest.json").generatedAt'))."
