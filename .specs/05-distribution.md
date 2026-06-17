@@ -57,7 +57,9 @@ repo's security posture:
   commits, no bot bypass) and version-controlled (diffable, revertable).
 
 Flow (`release-manifest.yml`): build `--from-releases` → cosign-sign →
-push a `bot/manifest-update` branch → open a PR. A maintainer **reviews and
+push a `bot/manifest-update` branch and surface a PR link. A maintainer
+opens the PR (org policy commonly bars Actions from *creating* PRs, so the
+workflow links it rather than relying on that), **reviews, and
 squash-merges**; GitHub signs the resulting commit on `main`, satisfying
 require-signed-commits with no key on the runner and no bypass. The PR is
 the deliberate "publish this manifest" checkpoint. (First-party only:
