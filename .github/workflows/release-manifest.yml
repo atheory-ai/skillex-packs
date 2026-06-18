@@ -84,6 +84,9 @@ jobs:
 
           # Commit each file via the Contents API → GitHub signs the commit
           # (Verified), satisfying required_signatures without a key on the runner.
+          # NOTE: do NOT pass committer/author — supplying a committer opts the
+          # commit out of GitHub's web-flow signing. Omitting it lets GitHub
+          # attribute the commit to the Actions identity and sign it (Verified).
           put() {
             local path="$1" file="$2" sha
             sha="$(gh api "repos/$REPO/contents/$path?ref=$branch" --jq .sha 2>/dev/null || true)"
@@ -92,10 +95,7 @@ jobs:
               --arg content "$(base64 -w0 "$file")" \
               --arg branch "$branch" \
               --arg sha "$sha" \
-              --arg name "$BOT_NAME" --arg email "$BOT_EMAIL" \
-              '{message:$message, content:$content, branch:$branch,
-                committer:{name:$name, email:$email},
-                author:{name:$name, email:$email}}
+              '{message:$message, content:$content, branch:$branch}
                + (if $sha == "" then {} else {sha:$sha} end)' \
             | gh api -X PUT "repos/$REPO/contents/$path" --input - >/dev/null
           }
