@@ -33,8 +33,8 @@ Next.js runs on Node, Bun, Deno, and edge runtimes, so it is named **once**:
 
 Runtimes are modelled two ways instead:
 
-- **`compatibility:`** — `{ node: ">=20", bun: ">=1.1" }` (see
-  `skills/versioning-a-pack.md`).
+- **`registry.compatibility:`** — `{ node: ">=20", bun: ">=1.1" }`
+  (registry-layer metadata; see `skills/versioning-a-pack.md`).
 - **`runtime`-scope packs** for runtime-specific idioms —
   `atheory-ai.javascript.runtime.bun`.
 

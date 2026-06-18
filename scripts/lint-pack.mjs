@@ -11,7 +11,7 @@
 // With no path args, lints every discovered pack. Exits non-zero on any error.
 
 import { readFileSync, statSync } from "node:fs";
-import { relative, basename } from "node:path";
+import { relative, basename, join } from "node:path";
 import {
   discoverPacks, listFiles, readPackYaml, hasSymlink, extOf,
   ALLOWED_EXTENSIONS, REPO_ONLY_FILES, RESERVED_HANDLES, CANONICAL_HANDLE,
@@ -39,7 +39,69 @@ const INJECTION_PHRASES = [
   /you are now\b/i,
 ];
 const TEXT_EXTS = new Set([".md", ".txt", ".yaml", ".yml", ".json"]);
-const REQUIRED_YAML_FIELDS = ["name", "version", "description", "license"];
+const REQUIRED_YAML_FIELDS = ["name", "version", "description"]; // engine fields; license is under registry:
+const VALID_SCOPES = new Set(["", "repo", "subtree", "directory", "matching-files", "nearest-ancestor", "boundary"]);
+const ACTIVATE_WHEN_KEYS = ["files-present", "files-matching", "dependency-declared", "detector"];
+
+// Validate the engine manifest shape (mirrors internal/packs/pack.go Validate
+// in atheory-ai/skillex), so an engine-invalid pack fails here at PR time
+// rather than at install/activation.
+function validateEngineManifest(manifest, pack, err) {
+  const skills = manifest.skills;
+  if (!Array.isArray(skills) || skills.length === 0) {
+    err(`pack.yaml skills must contain at least one entry`);
+  } else {
+    skills.forEach((skill, i) => {
+      const p = `skills[${i}]`;
+      if (!skill || typeof skill !== "object") { err(`${p} must be a mapping`); return; }
+      if (skill["activates-when"] !== undefined) {
+        err(`${p} uses "activates-when" — the engine key is "activate-when"`);
+      }
+      if (!skill.file || typeof skill.file !== "string") {
+        err(`${p}.file is required`);
+      } else if (skill.file.startsWith("/") || skill.file.split("/").includes("..")) {
+        err(`${p}.file must be a relative path inside the pack`);
+      } else {
+        try { statSync(join(pack.dir, skill.file)); }
+        catch { err(`${p}.file "${skill.file}" not found`); }
+      }
+      const aw = skill["activate-when"];
+      const hasAW = aw && typeof aw === "object" && ACTIVATE_WHEN_KEYS.some((k) => {
+        const v = aw[k];
+        return Array.isArray(v) ? v.length > 0 : (typeof v === "string" ? v.trim() !== "" : false);
+      });
+      if (!hasAW) {
+        err(`${p}.activate-when must contain one of: ${ACTIVATE_WHEN_KEYS.join(", ")}`);
+      }
+      if (skill.scope !== undefined && !VALID_SCOPES.has(String(skill.scope))) {
+        err(`${p}.scope must be one of: repo, subtree, directory, matching-files, nearest-ancestor, boundary`);
+      }
+    });
+  }
+
+  const detectors = manifest.detectors;
+  if (detectors !== undefined) {
+    if (typeof detectors !== "object" || Array.isArray(detectors)) {
+      err(`detectors must be a mapping of name -> { matches: [...] }`);
+    } else {
+      for (const [name, def] of Object.entries(detectors)) {
+        const dp = `detectors[${name}]`;
+        const matches = def && def.matches;
+        if (!Array.isArray(matches) || matches.length === 0) {
+          err(`${dp}.matches must contain at least one entry`);
+          continue;
+        }
+        matches.forEach((m, j) => {
+          if (!m || (m.file === undefined && m.dependency === undefined)) {
+            err(`${dp}.matches[${j}] must contain file or dependency`);
+          } else if (m.file !== undefined && (!m.file || !m.file.path)) {
+            err(`${dp}.matches[${j}].file.path is required`);
+          }
+        });
+      }
+    }
+  }
+}
 
 function lintPack(pack, sink) {
   const err = (msg) => sink.errors.push(`${pack.name}: ${msg}`);
@@ -86,6 +148,15 @@ function lintPack(pack, sink) {
     if (manifest.tier !== undefined) {
       warn(`pack.yaml declares "tier" — tier is derived from the handle and must not be declared`);
     }
+    // Registry-only metadata block (engine ignores it; the registry needs it).
+    const reg = manifest.registry;
+    if (!reg || typeof reg !== "object" || Array.isArray(reg)) {
+      err(`pack.yaml is missing the "registry:" metadata block (license, authors, …)`);
+    } else if (!reg.license) {
+      err(`pack.yaml registry.license is required`);
+    }
+    // Engine manifest schema.
+    validateEngineManifest(manifest, pack, err);
   }
 
   // --- per-file checks ---

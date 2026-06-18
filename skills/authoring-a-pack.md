@@ -54,42 +54,51 @@ ecosystems/javascript/packs/alice/tool.eslint.airbnb/
 
 ## Step 2 — write `pack.yaml`
 
+`pack.yaml` is **engine fields** + a **`registry:` block** the engine ignores:
+
 ```yaml
+# --- engine fields (parsed by @atheory-ai/skillex) ---
 name: atheory-ai.javascript.metaframework.nextjs   # full handle-first name
 version: 0.1.0                                      # semver — see skills/versioning-a-pack.md
 description: Next.js App Router patterns and gotchas
-authors: [atheory-ai]
-license: Apache-2.0
-homepage: https://github.com/atheory-ai/skillex-packs/tree/main/ecosystems/javascript/packs/atheory-ai/metaframework.nextjs
 
-compatibility:
-  # runtime / language baseline lives here (ecosystem segment is the language)
-  node: ">=20"            # or bun / deno for a JS pack; go / python elsewhere
-  nextjs: ">=14 <16"
-  skillex: ">=0.7 <2"
-
-activation:
-  detectors: [nextjs]                      # baked-in detector from the engine
-  files-present:
-    - next.config.{js,mjs,ts}
-
-scopes:
-  - subtree
-    rooted-at: nearest-ancestor("next.config.*")
+# Detectors this pack defines (built-ins are only docker/go/javascript/
+# typescript, so declare nextjs yourself). A MAP of name -> match rules.
+detectors:
+  nextjs:
+    matches:
+      - file: { path: "next.config.*" }
+      - dependency: { source: npm-package, name: next }
 
 skills:
   - file: skills/routing.md
-    activates-when:
+    activate-when:                 # NOTE the hyphen (not "activates-when")
       detector: nextjs
-  - file: skills/server-actions.md
-    activates-when:
+    scope: subtree                 # repo|subtree|directory|matching-files|
+  - file: skills/server-actions.md #   nearest-ancestor|boundary
+    activate-when:
       detector: nextjs
       files-matching: ["**/actions.{ts,js}"]
+    scope: matching-files
+    files: ["**/actions.{ts,js}"]
+
+# --- registry-only metadata (engine ignores this) ---
+registry:
+  license: Apache-2.0
+  authors: [atheory-ai]
+  homepage: https://github.com/atheory-ai/skillex-packs/tree/main/ecosystems/javascript/packs/atheory-ai/metaframework.nextjs
+  compatibility:                   # forward-looking; not consumed by the engine yet
+    node: ">=20"
+    nextjs: ">=14 <16"
+    skillex: ">=0.7 <2"
 ```
 
-There is **no `tier:` field** — tier is derived from the handle. The
-exhaustive schema lives in the engine repo at `internal/packs/pack.go`. Run
-`npm run validate` to check yours.
+Watch the gotchas: the activation key is **`activate-when`** (hyphen), there
+is **no** top-level `activation:`/`scopes:` block (activation and `scope` are
+per-skill), and **no `tier:`** (derived from the handle). Engine fields vs the
+`registry:` block are kept separate so `pack.yaml` stays a valid engine
+manifest; the source of truth for engine fields is `internal/packs/pack.go` in
+`atheory-ai/skillex`. Run `npm run lint:packs` to check yours.
 
 ## Step 3 — write the skills
 

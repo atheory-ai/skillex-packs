@@ -79,21 +79,25 @@ function packEntry(pack) {
   }
   const { sha256, size } = digest;
 
+  // Registry-only metadata lives in the `registry:` block (the engine ignores
+  // it); engine fields (name/version/description) are top-level.
+  const reg = manifest.registry ?? {};
+
   const entry = {
     name: pack.name,
     handle: pack.handle,
     tier: pack.tier, // derived from the handle
     version,
     description: manifest.description ?? "",
-    homepage: manifest.homepage ??
+    homepage: reg.homepage ??
       `https://github.com/${REGISTRY}/tree/main/ecosystems/${pack.ecosystem}/packs/${pack.handle}/${pack.leaf}`,
-    license: manifest.license ?? "",
-    authors: manifest.authors ?? [pack.handle],
-    compatibility: manifest.compatibility ?? {},
+    license: reg.license ?? "",
+    authors: reg.authors ?? [pack.handle],
+    compatibility: reg.compatibility ?? {},
     tarball: { url: tarballUrl(pack.name, version), sha256, size },
   };
-  if (manifest.replaces) entry.replaces = manifest.replaces;
-  if (manifest["superseded-by"]) entry["superseded-by"] = manifest["superseded-by"];
+  if (reg.replaces) entry.replaces = reg.replaces;
+  if (reg["superseded-by"]) entry["superseded-by"] = reg["superseded-by"];
   return entry;
 }
 

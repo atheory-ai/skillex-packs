@@ -26,13 +26,19 @@ being happy?"* If yes, MAJOR.
 
 ## Compatibility metadata
 
+**Registry-layer, forward-looking:** the engine has no `compatibility`
+concept (it activates via detectors + `activate-when`), so this lives in
+`pack.yaml`'s **`registry:` block** and the signed manifest — used by the
+registry and the future install path, ignored by the engine today.
+
 ```yaml
-compatibility:
-  # runtime / language baseline. For a JS pack the runtime lives here,
-  # because the ecosystem segment is the language:
-  node: ">=20"          # or bun / deno; or go / python in other ecosystems
-  nextjs: ">=14 <16"    # framework / library ranges
-  skillex: ">=0.7 <2"   # engine version authored against
+registry:
+  compatibility:
+    # runtime / language baseline. For a JS pack the runtime lives here,
+    # because the ecosystem segment is the language:
+    node: ">=20"        # or bun / deno; or go / python in other ecosystems
+    nextjs: ">=14 <16"  # framework / library ranges
+    skillex: ">=0.7 <2" # engine version authored against
 ```
 
 - All ranges use npm's semver grammar (normalized for Go/PyPI too) — one
@@ -75,8 +81,8 @@ When a pack is renamed — most often when a community pack is promoted to
 core and republished under `atheory-ai.*` (the handle is the first segment,
 so the name changes) — link the old and new names:
 
-- `superseded-by: <new-name>` on the **old** pack.
-- `replaces: <old-name>` on the **new** pack.
+- `registry.superseded-by: <new-name>` on the **old** pack.
+- `registry.replaces: <old-name>` on the **new** pack.
 
 The engine follows the link on `update`/`install` so installs migrate
 cleanly, after showing the rename in the diff. Supersession is **not** a
