@@ -6,7 +6,7 @@ name: release-manifest
 # provably matches what consumers download — independent of build determinism.
 #
 # Publishing model: the manifest is a version-controlled artifact on `main`
-# (registry/manifest.json + .sig + .cert), updated via a **reviewed PR**.
+# (registry/manifest.json + .bundle), updated via a **reviewed PR**.
 # This is the only write path that fits the repo's security posture —
 # immutable releases rule out updating a release, and the Tag Ruleset rules
 # out CI creating new tags — while keeping `main` fully protected
