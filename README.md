@@ -141,51 +141,21 @@ test/           Tests for the tooling
 
 ## Contributing a pack
 
-Anyone can contribute. The path depends on the tier:
+Anyone can contribute — under **your own verified handle** (community), an
+upstream org granted *official* status, or `atheory-ai` (core). Every
+contribution is open-source into this repo under Apache-2.0 with a **DCO
+sign-off** (you keep your copyright; no CLA) and passes the CI gates (lint,
+schema, file-allowlist, prompt-injection checks, tests).
 
-- **Community pack** — publish under **your own** verified handle, e.g.
-  `alice.javascript.tool.eslint.airbnb`. A new handle's first pack gets one
-  atheory-ai review (anti-typosquat / anti-spam / anti-injection); after that
-  your `OWNERS` self-approve subsequent changes.
-- **Official pack** — an upstream maintainer publishes under their verified org
-  handle (`vercel.*`); the *official* label is granted by atheory-ai.
-- **Core pack** — `atheory-ai.*`, maintained by
-  `@atheory-ai/skillex-maintainers` (2 approvals).
+The step-by-step — authoring, naming, versioning, the commit/sign-off
+workflow, review, and release — lives in **[`CONTRIBUTING.md`](CONTRIBUTING.md)**
+(see also [`DCO`](DCO) and [`SECURITY.md`](SECURITY.md)). Because this repo
+runs skillex on itself, the same lifecycle is also queryable as skills in
+[`skills/`](skills/) — e.g. `skillex query --search "authoring a pack"`.
 
-Every contribution is an **open-source contribution into this repo** under
-Apache-2.0 with a **DCO sign-off** (you keep your copyright; no CLA), and must
-pass the CI gates (lint, schema, file-allowlist, prompt-injection checks,
-tooling tests). See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`DCO`](DCO),
-[`SECURITY.md`](SECURITY.md).
-
-### The lifecycle is documented as skills
-
-This repo *uses skillex on itself*: the [`skills/`](skills/) directory is a
-queryable guide to the whole pack lifecycle. Ask the skillex MCP server, or:
-
-```bash
-skillex query --search "authoring a pack"
-skillex query --search "sign off commit dco"
-```
-
-| Step | Skill |
-|---|---|
-| Name a pack; pick handle / ecosystem / tier | `skills/naming-and-tiers.md` |
-| Create the pack (dirs, `pack.yaml`, skills, tests) | `skills/authoring-a-pack.md` |
-| Version it / breaking changes / renames | `skills/versioning-a-pack.md` |
-| Commit, sign off (DCO + signature), open the PR | `skills/contributing-and-dco.md` |
-| Pass the security & review gate | `skills/security-and-review.md` |
-| Publish via release tag | `skills/releasing-a-pack.md` |
-| Consume from one or many registries | `skills/registries-and-federation.md` |
-
-### How publishing works
-
-Merging source does **not** publish. A maintainer pushes a release tag
-`pack/<name>/v<semver>`, which triggers CI to build the deterministic tarball,
-cosign-sign it, attach SLSA provenance, and create an immutable GitHub
-Release. A follow-up workflow rebuilds the signed manifest **from the actual
-released assets** and opens a reviewed PR to update it on `main`. Details:
-[`.specs/05-distribution.md`](.specs/05-distribution.md).
+Publishing is tag-triggered: a `pack/<name>/v<semver>` tag builds, signs, and
+SLSA-attests the release, then a reviewed PR updates the signed manifest
+([`.specs/05-distribution.md`](.specs/05-distribution.md)).
 
 ---
 
