@@ -57,13 +57,14 @@ repo's security posture:
   commits, no bot bypass) and version-controlled (diffable, revertable).
 
 Flow (`release-manifest.yml`): build `--from-releases` → cosign-sign →
-push a `bot/manifest-update` branch and surface a PR link. A maintainer
-opens the PR (org policy commonly bars Actions from *creating* PRs, so the
-workflow links it rather than relying on that), **reviews, and
-squash-merges**; GitHub signs the resulting commit on `main`, satisfying
-require-signed-commits with no key on the runner and no bypass. The PR is
-the deliberate "publish this manifest" checkpoint. (First-party only:
-`gh` + `git`, no third-party PR action.)
+commit the manifest + bundle to a `bot/manifest-update` branch **via the
+GitHub Contents API**. Commits made through the API are signed by GitHub
+(**Verified**), so they satisfy `required_signatures` with no signing key on
+the runner. The workflow then links a PR; a maintainer opens it (org policy
+bars Actions from *creating* PRs), **reviews, and squash-merges**. The PR is
+the deliberate "publish this manifest" checkpoint, and `main`'s protection
+(require-PR + signed commits, no bypass) is fully honored. (First-party
+only: `gh`/GitHub API, no third-party PR action, no signing keys in CI.)
 
 Pack **tarballs** stay on their immutable, per-version GitHub Releases —
 create-once, never-updated, fine under both rulesets.
