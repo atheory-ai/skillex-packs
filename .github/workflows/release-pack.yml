@@ -61,12 +61,13 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign tarball (keyless)
+      - name: Sign tarball (keyless, bundle)
         run: |
           set -euo pipefail
+          # Self-contained cosign bundle (sig + cert + tlog entry); verifies
+          # without a flaky online Rekor search, matching the manifest signer.
           cosign sign-blob --yes \
-            --output-signature "${{ steps.build.outputs.tarball }}.sig" \
-            --output-certificate "${{ steps.build.outputs.tarball }}.cert" \
+            --bundle "${{ steps.build.outputs.tarball }}.bundle" \
             "${{ steps.build.outputs.tarball }}"
 
       - name: Generate SLSA provenance
@@ -83,4 +84,4 @@ jobs:
           gh release create "${GITHUB_REF#refs/tags/}" \
             --title "${{ steps.tag.outputs.name }} v${{ steps.tag.outputs.version }}" \
             --notes "Automated release. SHA256: ${{ steps.build.outputs.sha256 }}" \
-            "$t" "$t.sha256" "$t.sig" "$t.cert"
+            "$t" "$t.sha256" "$t.bundle"
