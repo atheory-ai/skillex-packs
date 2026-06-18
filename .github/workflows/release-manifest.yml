@@ -10,14 +10,15 @@ name: release-manifest
 # This is the only write path that fits the repo's security posture —
 # immutable releases rule out updating a release, and the Tag Ruleset rules
 # out CI creating new tags — while keeping `main` fully protected
-# (require-PR + signed commits, no bot bypass). This workflow pushes the
-# signed manifest to a branch and links a PR; a human opens (if org policy
-# bars Actions from creating PRs), reviews, and squash-merges — GitHub signs
-# the resulting commit on `main`. Pack tarballs stay on their immutable,
-# per-version GitHub Releases.
+# (require-PR + signed commits, no bot bypass). This workflow commits the
+# signed manifest to a bot branch via the GitHub Contents API — commits made
+# through the API are signed by GitHub (Verified), so they satisfy
+# required_signatures with no signing key on the runner — then links a PR. A
+# human opens (org policy bars Actions from creating PRs), reviews, and
+# squash-merges. Pack tarballs stay on their immutable, per-version Releases.
 #
-# First-party only: gh + git + GitHub/Sigstore official actions. No
-# third-party PR actions.
+# First-party only: gh (GitHub API) + GitHub/Sigstore official actions. No
+# third-party PR actions, no signing keys in CI.
 
 on:
   workflow_run:
@@ -60,32 +61,51 @@ jobs:
             --bundle registry/manifest.json.bundle \
             registry/manifest.json
 
-      - name: Open / update the manifest PR
+      - name: Commit manifest to bot branch (GitHub-verified, via API) and link the PR
+        env:
+          REPO: ${{ github.repository }}
+          BOT_NAME: "github-actions[bot]"
+          BOT_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           branch="bot/manifest-update"
-          git switch -C "$branch"
-          git add registry/manifest.json registry/manifest.json.bundle
+          gen="$(node -p 'require("./registry/manifest.json").generatedAt')"
+          # Commit message carries the DCO sign-off so the dco check passes;
+          # author == sign-off identity (the bot).
+          msg="$(printf 'chore(registry): publish manifest (%s)\n\nSigned-off-by: %s <%s>' "$gen" "$BOT_NAME" "$BOT_EMAIL")"
 
-          if git diff --cached --quiet; then
-            echo "Manifest unchanged; nothing to propose."
-            exit 0
+          # Reset the bot branch to main so its only delta is the manifest.
+          main_sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
+          if gh api "repos/$REPO/git/ref/heads/$branch" >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$REPO/git/refs/heads/$branch" -f sha="$main_sha" -F force=true >/dev/null
+          else
+            gh api -X POST "repos/$REPO/git/refs" -f ref="refs/heads/$branch" -f sha="$main_sha" >/dev/null
           fi
 
-          gen="$(node -p 'require("./registry/manifest.json").generatedAt')"
-          # -s adds the DCO sign-off so the dco check passes on this PR.
-          git commit -s -m "chore(registry): publish manifest ($gen)"
-          git push -f origin "$branch"
+          # Commit each file via the Contents API → GitHub signs the commit
+          # (Verified), satisfying required_signatures without a key on the runner.
+          put() {
+            local path="$1" file="$2" sha
+            sha="$(gh api "repos/$REPO/contents/$path?ref=$branch" --jq .sha 2>/dev/null || true)"
+            jq -n \
+              --arg message "$msg" \
+              --arg content "$(base64 -w0 "$file")" \
+              --arg branch "$branch" \
+              --arg sha "$sha" \
+              --arg name "$BOT_NAME" --arg email "$BOT_EMAIL" \
+              '{message:$message, content:$content, branch:$branch,
+                committer:{name:$name, email:$email},
+                author:{name:$name, email:$email}}
+               + (if $sha == "" then {} else {sha:$sha} end)' \
+            | gh api -X PUT "repos/$REPO/contents/$path" --input - >/dev/null
+          }
+          put registry/manifest.json registry/manifest.json
+          put registry/manifest.json.bundle registry/manifest.json.bundle
 
-          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
-          body="Automated manifest build (\`--from-releases\`), cosign-signed. Review and **squash-merge** to publish; GitHub signs the resulting commit on \`main\`. Updates \`registry/manifest.json\` + \`.bundle\`. (generatedAt: $gen)"
+          url="${GITHUB_SERVER_URL}/${REPO}/compare/main...${branch}?expand=1"
+          body="Automated manifest build (\`--from-releases\`), cosign-signed (bundle), committed via the API so the commits are GitHub-verified. Review and **squash-merge** to publish. Updates \`registry/manifest.json\` + \`.bundle\`. (generatedAt: $gen)"
 
-          # Try to open the PR. Org policy commonly forbids Actions from
-          # creating PRs; if so, fall back to printing a one-click link for a
-          # maintainer to open it. Either way a human reviews + squash-merges.
+          # Open the PR if Actions is permitted; otherwise link it for a human.
           if gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
             echo "Existing manifest PR updated → $url"
           elif gh pr create --base main --head "$branch" --title "Publish registry manifest" --body "$body" 2>/dev/null; then
@@ -97,7 +117,7 @@ jobs:
           {
             echo "## Signed manifest ready to publish"
             echo ""
-            echo "Branch \`$branch\` updated (generatedAt \`$gen\`)."
+            echo "Branch \`$branch\` updated with **GitHub-verified** commits (generatedAt \`$gen\`)."
             echo ""
             echo "👉 [Open the publish PR]($url) — review and squash-merge."
           } >> "$GITHUB_STEP_SUMMARY"
