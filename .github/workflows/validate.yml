@@ -55,8 +55,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -f registry/manifest.json.bundle ]; then
-            echo "No committed manifest signature yet (bootstrap); skipping."
-            exit 0
+            echo "::error::Missing registry/manifest.json.bundle. Commit the cosign bundle alongside registry/manifest.json to enable the tamper-guard."
+            exit 1
           fi
           cosign verify-blob \
             --bundle registry/manifest.json.bundle \
