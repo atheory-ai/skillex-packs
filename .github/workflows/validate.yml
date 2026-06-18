@@ -54,13 +54,12 @@ jobs:
       - name: Verify committed manifest signature
         run: |
           set -euo pipefail
-          if [ ! -f registry/manifest.json.sig ]; then
+          if [ ! -f registry/manifest.json.bundle ]; then
             echo "No committed manifest signature yet (bootstrap); skipping."
             exit 0
           fi
           cosign verify-blob \
-            --certificate registry/manifest.json.cert \
-            --signature registry/manifest.json.sig \
+            --bundle registry/manifest.json.bundle \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --certificate-identity-regexp '^https://github\.com/atheory-ai/skillex-packs/\.github/workflows/release-manifest\.yml@' \
             registry/manifest.json

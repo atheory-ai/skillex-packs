@@ -40,9 +40,10 @@ Two layers:
    `.sha256`. Both are uploaded to the GitHub Release.
 2. **Signed manifest.** The registry manifest (`registry/manifest.json`)
    is signed with [cosign](https://docs.sigstore.dev/cosign/overview/)
-   keyless OIDC signing inside the release workflow. The signature
-   bundle (`manifest.json.sig`, `manifest.json.cert`) is published
-   alongside.
+   keyless OIDC signing inside the `release-manifest` workflow. The cosign
+   **bundle** (`manifest.json.bundle` — signature + cert + transparency-log
+   entry) is committed alongside, so verification checks the embedded tlog
+   entry rather than an online Rekor search.
 
 Engine install path:
 
