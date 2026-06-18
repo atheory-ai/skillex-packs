@@ -7,7 +7,7 @@
 | Pack tarball | GitHub Release of this repo | `github.com/atheory-ai/skillex-packs/releases/download/pack/<name>/v<ver>/<name>-<ver>.tar.gz` |
 | Tarball checksum | Same release | `…/<name>-<ver>.tar.gz.sha256` |
 | Registry manifest | Version-controlled on `main` (canonical) | `raw.githubusercontent.com/atheory-ai/skillex-packs/main/registry/manifest.json`; CDN via `packs.skillex.dev` |
-| Manifest signature bundle | Beside the manifest on `main` | `registry/manifest.json.sig`, `registry/manifest.json.cert` |
+| Manifest signature bundle | Beside the manifest on `main` | `registry/manifest.json.bundle` (cosign bundle: signature + cert + tlog entry) |
 | SLSA attestation | Same release | `<name>-<ver>.intoto.jsonl` |
 
 We deliberately stay on GitHub. Reasons in `00-overview.md` and prior
@@ -46,7 +46,7 @@ CI workflow `release-pack.yml` triggers on these tags:
 ### Manifest publishing — a reviewed PR to `main`
 
 The manifest is a **version-controlled artifact on `main`**
-(`registry/manifest.json` + `.sig` + `.cert`), updated via a reviewed pull
+(`registry/manifest.json` + `.bundle`), updated via a reviewed pull
 request — not a GitHub Release. This is the only write path that fits the
 repo's security posture:
 
@@ -223,13 +223,13 @@ CDN in front of it) and verify the cosign signature. Three surfaces:
 
 | Surface | URL | Role | Trust |
 |---|---|---|---|
-| **Manifest on `main`** | `raw.githubusercontent.com/atheory-ai/skillex-packs/main/registry/manifest.json` (+ `.sig`, `.cert`) | **Canonical** — the version-controlled, reviewed, signed source the engine verifies and installs from | Updated only via reviewed PR; cosign-signed |
+| **Manifest on `main`** | `raw.githubusercontent.com/atheory-ai/skillex-packs/main/registry/manifest.json` (+ `.bundle`) | **Canonical** — the version-controlled, reviewed, signed source the engine verifies and installs from | Updated only via reviewed PR; cosign-signed |
 | **Discovery endpoint** | `https://packs.skillex.dev/manifest.json` (Cloudflare Worker) | **Primary tool/agent discovery at scale**: a stable, CDN-fronted, no-auth URL fronting the `main` copy | Advisory *transport* — verified per-fetch |
 | **Browsable index** | GitHub Pages site on this repo | The **human** surface: search/filter packs by ecosystem, tier, owner | Informational only; not an install source |
 
-The signature sits **beside** the manifest (`.sig` + `.cert` committed next
+The cosign **bundle** sits **beside** the manifest (`.bundle` committed next
 to it), so any surface — raw `main` or the CDN — yields a fully verifiable
-bundle. (This is what the earlier "raw on `main`" idea lacked; here the file
+pair. (This is what the earlier "raw on `main`" idea lacked; here the file
 is both *signed* and published through a reviewed path, so it is the
 canonical source rather than an unsigned advisory copy.)
 

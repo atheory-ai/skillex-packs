@@ -6,7 +6,7 @@ name: release-manifest
 # provably matches what consumers download — independent of build determinism.
 #
 # Publishing model: the manifest is a version-controlled artifact on `main`
-# (registry/manifest.json + .sig + .cert), updated via a **reviewed PR**.
+# (registry/manifest.json + .bundle), updated via a **reviewed PR**.
 # This is the only write path that fits the repo's security posture —
 # immutable releases rule out updating a release, and the Tag Ruleset rules
 # out CI creating new tags — while keeping `main` fully protected
@@ -51,11 +51,13 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign manifest (keyless)
+      - name: Sign manifest (keyless, bundle)
         run: |
+          # A cosign bundle is self-contained (signature + cert + tlog entry),
+          # so verify-blob checks it against the embedded entry instead of an
+          # online Rekor search (which is flaky for separate sig/cert files).
           cosign sign-blob --yes \
-            --output-signature registry/manifest.json.sig \
-            --output-certificate registry/manifest.json.cert \
+            --bundle registry/manifest.json.bundle \
             registry/manifest.json
 
       - name: Open / update the manifest PR
@@ -66,7 +68,7 @@ jobs:
 
           branch="bot/manifest-update"
           git switch -C "$branch"
-          git add registry/manifest.json registry/manifest.json.sig registry/manifest.json.cert
+          git add registry/manifest.json registry/manifest.json.bundle
 
           if git diff --cached --quiet; then
             echo "Manifest unchanged; nothing to propose."
@@ -79,7 +81,7 @@ jobs:
           git push -f origin "$branch"
 
           url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
-          body="Automated manifest build (\`--from-releases\`), cosign-signed. Review and **squash-merge** to publish; GitHub signs the resulting commit on \`main\`. Updates \`registry/manifest.json\` + \`.sig\` + \`.cert\`. (generatedAt: $gen)"
+          body="Automated manifest build (\`--from-releases\`), cosign-signed. Review and **squash-merge** to publish; GitHub signs the resulting commit on \`main\`. Updates \`registry/manifest.json\` + \`.bundle\`. (generatedAt: $gen)"
 
           # Try to open the PR. Org policy commonly forbids Actions from
           # creating PRs; if so, fall back to printing a one-click link for a
