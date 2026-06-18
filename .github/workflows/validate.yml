@@ -30,9 +30,12 @@ jobs:
       - name: Lint packs
         run: npm run lint:packs
 
-      # The manifest must build from the packs (.specs/05).
-      - name: Build manifest
-        run: npm run build:manifest
+      # The manifest must build from the packs (.specs/05). Write to a
+      # throwaway path under the gitignored registry/build/ so this smoke
+      # check never clobbers the committed registry/manifest.json — the
+      # tamper-guard below verifies that committed file against its signature.
+      - name: Build manifest (smoke)
+        run: npm run build:manifest -- --out registry/build/_validate-manifest.json
 
       # Repo skill test files are well-formed (.specs / skillex convention).
       # Invoked via node directly rather than the .bin shim: some npm
