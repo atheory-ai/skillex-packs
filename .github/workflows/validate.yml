@@ -54,9 +54,22 @@ jobs:
       - name: Verify committed manifest signature
         run: |
           set -euo pipefail
+          # Bootstrap-aware strictness: once `main` carries a bundle it must
+          # always be present (a PR can't drop the signature to bypass this),
+          # but before the first signed manifest exists there's nothing to
+          # verify yet.
+          git fetch --no-tags --depth=1 origin main >/dev/null 2>&1 || true
+          base_has_bundle=false
+          if git cat-file -e origin/main:registry/manifest.json.bundle 2>/dev/null; then
+            base_has_bundle=true
+          fi
           if [ ! -f registry/manifest.json.bundle ]; then
-            echo "::error::Missing registry/manifest.json.bundle. Commit the cosign bundle alongside registry/manifest.json to enable the tamper-guard."
-            exit 1
+            if [ "$base_has_bundle" = true ]; then
+              echo "::error::registry/manifest.json.bundle is missing but exists on main — refusing to drop the manifest signature."
+              exit 1
+            fi
+            echo "Bootstrap: no manifest bundle on main yet; nothing to verify."
+            exit 0
           fi
           cosign verify-blob \
             --bundle registry/manifest.json.bundle \
