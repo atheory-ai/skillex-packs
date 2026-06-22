@@ -214,41 +214,53 @@ metaframework.nextjs/
   CHANGELOG.md           # human-readable change history
 ```
 
-`pack.yaml` keys (locked in v1 — engine `internal/packs/pack.go` is the
-source of truth):
+`pack.yaml` has two parts: the **engine fields** (the manifest the engine
+parses — the source of truth is `internal/packs/pack.go` in
+`atheory-ai/skillex`) and a **`registry:` block** of metadata the engine
+ignores but this registry uses to build the signed manifest.
 
 ```yaml
+# --- engine fields (consumed by @atheory-ai/skillex) ---
 name: atheory-ai.javascript.metaframework.nextjs
 version: 1.4.0
 description: Next.js App Router patterns and gotchas
-authors:
-  - atheory-ai
-license: Apache-2.0
-homepage: https://github.com/atheory-ai/skillex-packs
 
-compatibility:                # see 02-versioning.md
-  nextjs: ">=14 <16"
-  node: ">=20"
-
-activation:                   # how skillex decides this pack applies
-  detectors:                  # ecosystem detectors from the engine
-    - nextjs
-  files-present:
-    - next.config.{js,mjs,ts}
-
-scopes:                       # which files / dirs the skills apply to
-  - subtree                   # all files under the Next.js root
-    rooted-at: nearest-ancestor("next.config.*")
+# Detectors a pack defines (a MAP of name -> match rules). The engine's
+# built-ins are only docker / go / javascript / typescript, so a pack
+# declares anything else (like nextjs) itself.
+detectors:
+  nextjs:
+    matches:
+      - file: { path: "next.config.*" }
+      - dependency: { source: npm-package, name: next }
 
 skills:
   - file: skills/routing.md
-    activates-when:
-      detector: nextjs
-  - file: skills/server-actions.md
-    activates-when:
+    activate-when:            # >=1 of: files-present, files-matching,
+      detector: nextjs        #         dependency-declared, detector
+    scope: subtree            # repo|subtree|directory|matching-files|
+  - file: skills/server-actions.md   #     nearest-ancestor|boundary
+    activate-when:
       detector: nextjs
       files-matching: ["**/actions.{ts,js}"]
+    scope: matching-files
+    files: ["**/actions.{ts,js}"]
+
+# --- registry-only metadata (ignored by the engine) ---
+registry:
+  license: Apache-2.0
+  authors: [atheory-ai]
+  homepage: https://github.com/atheory-ai/skillex-packs
+  compatibility:              # forward-looking; see 02-versioning.md
+    nextjs: ">=14 <16"
+    node: ">=20"
 ```
+
+> **Engine vs registry, deliberately separated.** The engine activates packs
+> via `detectors` + per-skill `activate-when`/`scope`; it has no
+> `compatibility`, tiers, or signing. Those live in the `registry:` block (and
+> the signed manifest) as the registry's forward-looking layer — the engine
+> ignores unknown top-level keys, so `pack.yaml` stays a valid engine manifest.
 
 ## Monorepo workspace boundaries
 

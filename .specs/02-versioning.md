@@ -27,22 +27,32 @@ being happy?" If yes, MAJOR.
 
 ## Compatibility metadata
 
-Every pack version declares which world it works in:
+> **Status: registry-layer, forward-looking.** The skillex engine today has
+> **no** `compatibility`/semver-range concept — it decides applicability via
+> `detectors` + `activate-when` (see `01-naming-and-structure.md`). So
+> `compatibility` lives in `pack.yaml`'s **`registry:` block** (and the signed
+> manifest), where the registry uses it for display and for the future
+> install/resolution path the engine's own spec anticipates. It is **not**
+> consumed by the engine's current activation. Everything in this section
+> describes that registry-layer resolution model.
+
+Every pack version declares which world it works in (under `registry:`):
 
 ```yaml
-compatibility:
-  # Required: runtime / language baseline. For JavaScript this is the
-  # runtime (node/bun/deno) — the ecosystem segment is the language, so the
-  # runtime lives here. For Go/Python the toolchain and language coincide.
-  node: ">=20"          # or `bun: ">=1.1"`, `deno: ">=1.4"`, `go: ">=1.22"`, `python: ">=3.11"`
+registry:
+  compatibility:
+    # Required: runtime / language baseline. For JavaScript this is the
+    # runtime (node/bun/deno) — the ecosystem segment is the language, so the
+    # runtime lives here. For Go/Python the toolchain and language coincide.
+    node: ">=20"        # or `bun: ">=1.1"`, `deno: ">=1.4"`, `go: ">=1.22"`, `python: ">=3.11"`
 
-  # Optional: framework / library versions, expressed as semver ranges
-  nextjs: ">=14 <16"
-  react: ">=18"
-  prisma: ">=5"
+    # Optional: framework / library versions, expressed as semver ranges
+    nextjs: ">=14 <16"
+    react: ">=18"
+    prisma: ">=5"
 
-  # Optional: skillex engine version this pack was authored against
-  skillex: ">=0.7 <2"
+    # Optional: skillex engine version this pack was authored against
+    skillex: ">=0.7 <2"
 ```
 
 Rules:
@@ -129,13 +139,13 @@ adding optional fields.
 When a pack is renamed — most commonly when a community pack is promoted to
 core and republished under the `atheory-ai` handle
 (`04-canonical-vs-community.md`), since the handle is the first name
-segment — the old name does not silently disappear. Two optional fields
-express the link in `pack.yaml`, mirrored into the manifest entry:
+segment — the old name does not silently disappear. Two optional fields in
+the `registry:` block express the link, mirrored into the manifest entry:
 
-- `superseded-by: <new-name>` on the **old** pack — "I am retired; install
-  `<new-name>` instead."
-- `replaces: <old-name>` on the **new** pack — the inverse pointer, so the
-  chain is walkable from either end.
+- `registry.superseded-by: <new-name>` on the **old** pack — "I am retired;
+  install `<new-name>` instead."
+- `registry.replaces: <old-name>` on the **new** pack — the inverse pointer,
+  so the chain is walkable from either end.
 
 Engine behavior:
 

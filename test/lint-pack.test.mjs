@@ -18,11 +18,21 @@ function runLint(root) {
   }
 }
 
-function writePack(root, { handle = "alice", eco = "javascript", leaf = "tool.eslint.airbnb", yaml, skill, extra } = {}) {
+// A valid engine pack (engine fields + registry block), with single-field
+// overrides so each test tweaks just the thing under test.
+const DEFAULT_SKILLS =
+  "skills:\n  - file: skills/usage.md\n    activate-when:\n      files-present: [package.json]\n    scope: subtree\n";
+
+function writePack(root, opts = {}) {
+  const {
+    handle = "alice", eco = "javascript", leaf = "tool.eslint.airbnb",
+    name, license = "MIT", registry = true, skillsYaml, skill, extra,
+  } = opts;
   const dir = join(root, `ecosystems/${eco}/packs/${handle}/${leaf}`);
   mkdirSync(join(dir, "skills"), { recursive: true });
-  writeFileSync(join(dir, "pack.yaml"), yaml ??
-    `name: ${handle}.${eco}.${leaf}\nversion: 0.1.0\ndescription: x\nlicense: MIT\n`);
+  const reg = registry ? `registry:\n  license: ${license}\n` : "";
+  writeFileSync(join(dir, "pack.yaml"),
+    `name: ${name ?? `${handle}.${eco}.${leaf}`}\nversion: 0.1.0\ndescription: x\n${skillsYaml ?? DEFAULT_SKILLS}${reg}`);
   writeFileSync(join(dir, "skills", "usage.md"), skill ?? "# usage\n\nLead with the rule.\n");
   writeFileSync(join(dir, "README.md"), "# r\n");
   writeFileSync(join(dir, "OWNERS"), "@a\n");
@@ -40,19 +50,13 @@ test("clean pack passes with no errors", () => {
 });
 
 test("reserved handle is rejected", () => {
-  const r = runLint(writePack(tmp("lint-resv-"), {
-    handle: "core",
-    yaml: "name: core.javascript.tool.eslint.airbnb\nversion: 0.1.0\ndescription: x\nlicense: MIT\n",
-  }));
+  const r = runLint(writePack(tmp("lint-resv-"), { handle: "core", name: "core.javascript.tool.eslint.airbnb" }));
   assert.equal(r.code, 1);
   assert.ok(r.errors.some((e) => /reserved/.test(e)));
 });
 
 test("runtime token as ecosystem is rejected", () => {
-  const r = runLint(writePack(tmp("lint-rt-"), {
-    eco: "node",
-    yaml: "name: alice.node.tool.eslint.airbnb\nversion: 0.1.0\ndescription: x\nlicense: MIT\n",
-  }));
+  const r = runLint(writePack(tmp("lint-rt-"), { eco: "node", name: "alice.node.tool.eslint.airbnb" }));
   assert.ok(r.errors.some((e) => /runtime/.test(e)));
 });
 
@@ -67,13 +71,25 @@ test("disallowed file, raw HTML, and http link are rejected", () => {
 });
 
 test("pack.yaml name must match the path", () => {
-  const r = runLint(writePack(tmp("lint-nm-"), {
-    yaml: "name: wrong.name.here.now\nversion: 0.1.0\ndescription: x\nlicense: MIT\n",
-  }));
+  const r = runLint(writePack(tmp("lint-nm-"), { name: "wrong.name.here.now" }));
   assert.ok(r.errors.some((e) => /does not match path-derived/.test(e)));
 });
 
 test("hidden zero-width character is rejected", () => {
   const r = runLint(writePack(tmp("lint-zw-"), { skill: "# u\n\nhid​den text\n" }));
   assert.ok(r.errors.some((e) => /hidden\/bidi/.test(e)));
+});
+
+test("engine-schema violation (wrong activate-when key) is rejected", () => {
+  const r = runLint(writePack(tmp("lint-schema-"), {
+    skillsYaml: "skills:\n  - file: skills/usage.md\n    activates-when:\n      files-present: [package.json]\n    scope: subtree\n",
+  }));
+  assert.equal(r.code, 1);
+  assert.ok(r.errors.some((e) => /activate-when/.test(e)), r.errors.join("\n"));
+});
+
+test("missing registry.license is rejected", () => {
+  const r = runLint(writePack(tmp("lint-reg-"), { registry: false }));
+  assert.equal(r.code, 1);
+  assert.ok(r.errors.some((e) => /registry/.test(e)), r.errors.join("\n"));
 });
