@@ -1,6 +1,6 @@
 # Engine fields (consumed by @atheory-ai/skillex — internal/packs/pack.go).
 name: atheory-ai.javascript.tool.example
-version: 0.1.0
+version: 0.1.1
 description: Minimal example pack that exercises the registry build pipeline.
 
 skills:

@@ -108,7 +108,7 @@ mitigate at three layers:
      These are advisory — they fail the build only when above a noise
      threshold, but get a review reviewer attached.
 2. **Diff preview on install.** When a user runs
-   `skillex packs install <name>`, the engine shows the skills that will
+   `skillex pack get <name>`, the engine shows the skills that will
    land and asks for confirmation. For interactive agents we expose this
    diff via the MCP tool so the agent can show the user.
 3. **Documented guardrails for agent integrators.** A short doc
@@ -122,9 +122,12 @@ mitigate at three layers:
 
 - `SECURITY.md` at repo root with private reporting via GitHub Security
   Advisories.
-- A revocation entry in `registry/revocations.json` (also signed) lists
-  any pack version withdrawn for security reasons. Engine checks
-  revocations before installing or refreshing.
+- The signed manifest's `revocations[]` lists any pack version withdrawn
+  for security reasons. The MVP checks a freshly fetched manifest before
+  installation. Offline refresh re-verifies cached signed evidence and
+  installed contents; it cannot discover revocations published afterward.
+  A separate signed revocation feed and online refresh policy remain future
+  work.
 - Time-to-mitigation goal: < 24h for critical (publicly exploitable
   prompt-injection), < 7d for high.
 

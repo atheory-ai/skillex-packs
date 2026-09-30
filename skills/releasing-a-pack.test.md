@@ -18,5 +18,14 @@ Success criteria:
 
 Prompt: Which place does the engine actually verify and install from?
 Success criteria:
-  - The canonical GitHub Release `manifest/v<n>`.
-  - Raw, the Worker endpoint, and the Pages index are advisory/human-facing; verification is per-fetch.
+  - The canonical signed manifest and bundle committed on `main`.
+  - Raw and the Worker transport the signed pair; the Pages index is human-facing. Verification is per-fetch.
+
+## Validation: immutable schema correction
+
+Prompt: The source example manifest is corrected, but the signed old release still fails engine validation. Can I replace its tarball or manually fix the registry manifest?
+Success criteria:
+  - Reject the old schema even when signature and SHA256 are valid.
+  - Publish a new pack version through the protected workflow, then review the signed manifest update PR.
+  - Do not overwrite immutable assets or hand-edit signed manifest bytes.
+  - Offline refresh cannot discover revocations newer than its saved signed manifest.
