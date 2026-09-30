@@ -307,3 +307,24 @@ The trade-off: cross-ecosystem refactors are mildly more annoying. The
   also fixes the `node`/`java`/`dotnet` inconsistency (those were runtimes/
   platforms): JVM and .NET/CLR become runtimes too, with the language as
   the ecosystem. See "Ecosystem is the language, not the runtime".
+
+### Composed activation (engine follow-up to skillex #26)
+
+`activate-when.all` is a nonempty list of conditions that must all match:
+
+```yaml
+activate-when:
+  all:
+    - detector: go
+    - files-present: [Dockerfile]
+```
+
+Nested `all` conditions are supported up to 32 nesting levels. Do not mix
+`all` with leaf fields in the same mapping. Flat conditions retain their
+existing alternative-match semantics. Matching files from successful children
+provide scope paths; `files` can select a separate target set for
+`scope: matching-files`.
+
+This extends the engine contract additively. Merge the matching engine PR
+first and use an engine version containing that change before publishing a
+pack that uses `all`; existing packs require no changes.

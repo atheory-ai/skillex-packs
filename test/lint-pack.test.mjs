@@ -93,3 +93,25 @@ test("missing registry.license is rejected", () => {
   assert.equal(r.code, 1);
   assert.ok(r.errors.some((e) => /registry/.test(e)), r.errors.join("\n"));
 });
+
+
+test("nested all activation passes", () => {
+  const r = runLint(writePack(tmp("lint-all-"), {
+    skillsYaml: "skills:\n  - file: skills/usage.md\n    activate-when:\n      all:\n        - detector: javascript\n        - all:\n            - files-present: [package.json]\n    scope: repo\n",
+  }));
+  assert.equal(r.code, 0, r.errors?.join("\n"));
+});
+
+for (const [name, condition, expected] of [
+  ["empty", "all: []", /at least one/],
+  ["mixed", "all: [{detector: javascript}]\n      detector: javascript", /cannot be combined/],
+  ["empty child", "all: [{}]", /all\[0\]/],
+]) {
+  test(`invalid all activation: ${name}`, () => {
+    const r = runLint(writePack(tmp("lint-all-invalid-"), {
+      skillsYaml: `skills:\n  - file: skills/usage.md\n    activate-when:\n      ${condition}\n    scope: repo\n`,
+    }));
+    assert.equal(r.code, 1);
+    assert.ok(r.errors.some((e) => expected.test(e)), r.errors.join("\n"));
+  });
+}

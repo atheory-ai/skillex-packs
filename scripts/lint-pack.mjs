@@ -43,6 +43,25 @@ const REQUIRED_YAML_FIELDS = ["name", "version", "description"]; // engine field
 const VALID_SCOPES = new Set(["", "repo", "subtree", "directory", "matching-files", "nearest-ancestor", "boundary"]);
 const ACTIVATE_WHEN_KEYS = ["files-present", "files-matching", "dependency-declared", "detector"];
 
+function validateActivation(aw, p, err, depth = 0) {
+  if (depth > 32) { err(`${p} exceeds maximum activation nesting depth of 32`); return; }
+  if (!aw || typeof aw !== "object" || Array.isArray(aw)) {
+    err(`${p} must be a mapping`); return;
+  }
+  const hasLeaf = ACTIVATE_WHEN_KEYS.some((k) => {
+    const v = aw[k];
+    return Array.isArray(v) ? v.length > 0 : typeof v === "string" && v.trim() !== "";
+  });
+  if (aw.all !== undefined && aw.all !== null) {
+    if (!Array.isArray(aw.all) || aw.all.length === 0 || hasLeaf) {
+      err(`${p}.all must contain at least one condition and cannot be combined with leaf fields`); return;
+    }
+    aw.all.forEach((child, i) => validateActivation(child, `${p}.all[${i}]`, err, depth + 1));
+  } else if (!hasLeaf) {
+    err(`${p} must contain one of: ${ACTIVATE_WHEN_KEYS.join(", ")}, all`);
+  }
+}
+
 // Validate the engine manifest shape (mirrors internal/packs/pack.go Validate
 // in atheory-ai/skillex), so an engine-invalid pack fails here at PR time
 // rather than at install/activation.
@@ -65,14 +84,7 @@ function validateEngineManifest(manifest, pack, err) {
         try { statSync(join(pack.dir, skill.file)); }
         catch { err(`${p}.file "${skill.file}" not found`); }
       }
-      const aw = skill["activate-when"];
-      const hasAW = aw && typeof aw === "object" && ACTIVATE_WHEN_KEYS.some((k) => {
-        const v = aw[k];
-        return Array.isArray(v) ? v.length > 0 : (typeof v === "string" ? v.trim() !== "" : false);
-      });
-      if (!hasAW) {
-        err(`${p}.activate-when must contain one of: ${ACTIVATE_WHEN_KEYS.join(", ")}`);
-      }
+      validateActivation(skill["activate-when"], `${p}.activate-when`, err);
       if (skill.scope !== undefined && !VALID_SCOPES.has(String(skill.scope))) {
         err(`${p}.scope must be one of: repo, subtree, directory, matching-files, nearest-ancestor, boundary`);
       }
