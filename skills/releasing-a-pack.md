@@ -25,8 +25,13 @@ pack/atheory-ai.javascript.metaframework.nextjs/v2.4.0
 pack/alice.javascript.tool.eslint.airbnb/v3.0.1
 ```
 
-Tags matching `pack/atheory-ai.*` are protected — only the release workflow
-creates them, via a deploy environment with a manual approval gate.
+Release tags are protected by the repository tag ruleset. An authorized
+maintainer creates a new signed tag at a reviewed `main` commit, then pushes
+that exact tag to trigger `release-pack.yml`. Tag creation requires the
+organization-admin permission configured by the ruleset; Actions cannot create
+these tags. Obtain release authorization before publication and never move or
+replace an existing tag. The current pack workflow has no deploy-environment
+approval step.
 
 ## What the release workflow does
 
@@ -36,9 +41,10 @@ On a `pack/<name>/v<ver>` tag, `release-pack.yml`:
 2. Builds a **deterministic** tarball (sorted entries, `mtime=0`).
 3. Generates a SHA256.
 4. Signs with **cosign** keyless OIDC.
-5. Emits a **SLSA L2** provenance attestation (`.intoto.jsonl`).
-6. Uploads tarball + `.sha256` + signature + attestation to a GitHub
-   Release named after the tag.
+5. Records build provenance using GitHub artifact attestations.
+6. Uploads tarball + `.sha256` + `.bundle` to a GitHub Release named after
+   the tag. Provenance is stored in GitHub's attestation service, not as a
+   separate `.intoto.jsonl` release asset.
 7. Triggers `release-manifest.yml`, which builds from immutable releases,
    signs the manifest, and proposes the manifest plus bundle as a reviewed PR
    to `main`. Merging that PR publishes the updated installable catalog.
@@ -87,3 +93,25 @@ activation and registry metadata, publish through the protected workflow, and
 review its signed manifest update. Consumers must refuse invalid schemas even
 when their signatures and checksums verify. Do not overwrite old assets or
 hand-edit signed registry bytes.
+
+## Published consumer smoke test
+
+The corrected example `0.1.1` and its reviewed signed catalog are published.
+Use an engine containing the verified consumer (Skillex `0.10.0` or newer),
+create a disposable project with `package.json`, then preview and install:
+
+```sh
+skillex init --yes --no-mcp
+skillex pack get atheory-ai.javascript.tool.example --preview
+skillex pack get atheory-ai.javascript.tool.example --yes
+skillex pack list
+skillex refresh
+skillex query --topic example
+```
+
+Check the same discovery through `skillex_query` over MCP. Offline refresh and
+query must work from saved authenticated evidence; an offline snapshot cannot
+observe later revocations. The example is pipeline test content, not production
+JavaScript guidance. The consumer currently verifies the signed manifest and
+its pinned archive digest; additional archive-signature/provenance verification
+is tracked separately in `atheory-ai/skillex#94`.

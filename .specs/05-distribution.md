@@ -8,7 +8,7 @@
 | Tarball checksum | Same release | `…/<name>-<ver>.tar.gz.sha256` |
 | Registry manifest | Version-controlled on `main` (canonical) | `raw.githubusercontent.com/atheory-ai/skillex-packs/main/registry/manifest.json`; CDN via `packs.skillex.dev` |
 | Manifest signature bundle | Beside the manifest on `main` | `registry/manifest.json.bundle` (cosign bundle: signature + cert + tlog entry) |
-| SLSA attestation | Same release | `<name>-<ver>.intoto.jsonl` |
+| Build provenance | GitHub artifact attestations | Associated with the published archive SHA256; not a separate release asset |
 
 We deliberately stay on GitHub. Reasons in `00-overview.md` and prior
 discussion: free, CDN-fronted, anonymous reads, integrated with the
@@ -38,8 +38,8 @@ CI workflow `release-pack.yml` triggers on these tags:
 2. Builds a deterministic tarball (sorted entries, mtime=0).
 3. Generates SHA256.
 4. Signs with cosign keyless OIDC.
-5. Uploads tarball + checksum + signature + SLSA attestation to a
-   GitHub Release named after the tag.
+5. Records GitHub artifact provenance and uploads tarball + checksum +
+   signature bundle to a GitHub Release named after the tag.
 6. Triggers `release-manifest.yml`, which proposes the manifest update as a
    reviewed PR to `main` (below).
 

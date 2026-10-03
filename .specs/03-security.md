@@ -66,10 +66,11 @@ If any step fails, **no files land on disk**.
 
 ## SLSA / provenance
 
-Day 1 target: **SLSA Build Level 2** via `slsa-github-generator`. Each
-release produces a provenance attestation pinned to the workflow that
-built it. The engine can opt-in to verify the attestation in addition to
-the cosign signature.
+The release workflow records provenance with
+`actions/attest-build-provenance` in GitHub's artifact attestation service,
+associated with the archive SHA256 and producing workflow. The initial engine
+consumer verifies the manifest signature and archive digest; additional archive
+signature and provenance verification is future work (`atheory-ai/skillex#94`).
 
 We can extend to Level 3 once we have a hermetic builder; not blocking
 for launch.
@@ -81,9 +82,10 @@ Mandatory on this repo from day one:
 - `main` requires PRs, 1 required review (2 for `packs/atheory-ai/**` via
   CODEOWNERS), passing CI, signed commits.
 - No force-push to `main` or to `pack/*` release tags.
-- Tags matching `pack/atheory-ai.*` are protected — only the release
-  workflow can create them, via a deploy environment with a manual
-  approval gate.
+- Release tags are protected. The configured organization-admin actor creates
+  an authorized new signed tag at reviewed `main`; pushing it triggers the pack
+  release workflow. Actions cannot create these tags. The current pack workflow
+  has no deploy-environment approval step. Never update or delete release tags.
 - CI rejects any pack whose `handle` segment is not owned by the PR author
   (GitHub login or verified org membership), and rejects any non-maintainer
   claim on a reserved handle (`atheory-ai`, `core`, `official`, …).
