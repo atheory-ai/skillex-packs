@@ -129,16 +129,19 @@ Pre-release versions are listed too but only resolve under
 
 ## Engine integration
 
-New engine commands (proposed for skillex `0.8.0`):
+The initial verified engine consumer (skillex issue #42) uses:
 
 ```
-skillex packs available            # list manifest entries matching local project
-skillex packs install <name>       # consent → fetch → verify → extract
-skillex packs list                 # what's installed locally
-skillex packs remove <name>
-skillex packs update [<name>]      # re-resolve against fresh manifest
-skillex packs trust <key-or-issuer>  # advanced: pin a different signing identity
+skillex pack get <name> --preview   # verify and show files/scopes without writes
+skillex pack get <name>            # verify, preview, ask, then install
+skillex pack get <name> --yes      # explicit unattended consent
+skillex pack list --json          # installed verified packs
 ```
+
+The MVP resolves the latest stable version by name and supports one registry
+with the engine-bundled trust root and exact signer identity. Compatibility
+resolution, search/info/update/remove, MCP proposals, and federation are later
+phases. `skillex get <url>` remains the raw review-gated path.
 
 MCP tools (for agent-driven flows):
 
@@ -153,16 +156,19 @@ On disk after install:
 ```
 .skillex/
   packs/
-    atheory-ai.javascript.metaframework.nextjs/
-      manifest.lock.json            # pinned version + sha256 we trusted
+    atheory-ai.javascript.metaframework.nextjs@2.4.0/
+      manifest.lock.json            # signed manifest + bundle and pinned entry
+      archive.tar.gz                # verified archive evidence
       …extracted pack contents…
   index.db
 ```
 
 `manifest.lock.json` is what makes installs reproducible: the engine
 records exactly which manifest entry it installed from, including the
-sha256 it verified. A re-install or a `skillex doctor` run validates
-the on-disk pack against this lock.
+sha256 it verified. Offline refresh verifies the saved signature, pinned archive, and extracted
+contents against authenticated evidence. It also checks embedded revocations
+in that saved manifest; it cannot observe later revocations without fetching a
+new signed manifest.
 
 ### Vendoring (local cache in project git)
 
@@ -171,7 +177,7 @@ Because the lock pins the verified sha256, a project can **commit
 pattern as vendoring `node_modules` or Go modules. This gives
 reproducible and air-gappable installs, and insulates a project from a
 registry outage or a withdrawn version, without weakening security:
-`skillex doctor` re-validates the vendored bytes against
+offline refresh re-validates the vendored bytes against
 `manifest.lock.json`, so a tampered vendored copy is detected just like a
 tampered download. See `04-canonical-vs-community.md`, "Durability
 (consumer-side)".
@@ -254,3 +260,14 @@ The Worker is what makes discovery scale (CDN, no auth, no rate limit).
 Until it is stood up, the engine reads the manifest straight from the raw
 `main` URL above — no GitHub API, no rate limit, always current. The Worker
 later just puts a CDN and a memorable domain in front of the same file.
+
+## First compatible example release
+
+The source example was corrected in #17, but its already-published 0.1.0
+archive still carries the old incompatible manifest schema. An authentic
+signature does not make that schema valid. Strict consumers must reject it.
+
+Publish example 0.1.1 using the protected pack-release workflow, then review
+and merge the signed manifest update produced from releases. Ship the engine
+consumer before using `pack get`. Do not replace immutable 0.1.0 assets or
+regenerate the committed signed manifest by hand.

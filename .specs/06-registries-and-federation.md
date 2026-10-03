@@ -15,6 +15,18 @@ chain), and apt (sources + pinning) all serve. The skillex model below adds
 one thing those mostly lack: trust is bound to the pack's **handle**, not to
 the registry that served it — which is what makes federation safe.
 
+## Initial engine consumer boundary
+
+The first consumer implementation in skillex issue #42 supports one registry
+and `trustedRoot: "bundled"`. It rejects multiple registries, custom roots,
+and policy fields instead of silently ignoring them. A mirror may transport
+the original manifest and bundle, but the embedded expected signer identity
+still applies. Plural `registries[]` preserves the future configuration shape.
+
+The precedence, policy, compatibility, and handle-binding model below remains
+the federation design target; it is not implemented by the initial consumer.
+Do not use an MVP engine to consume re-signed private registries.
+
 ## Configuration model
 
 `skillex.json` carries an **ordered list** of registries plus a global

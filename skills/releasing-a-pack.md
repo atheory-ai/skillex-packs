@@ -39,8 +39,9 @@ On a `pack/<name>/v<ver>` tag, `release-pack.yml`:
 5. Emits a **SLSA L2** provenance attestation (`.intoto.jsonl`).
 6. Uploads tarball + `.sha256` + signature + attestation to a GitHub
    Release named after the tag.
-7. Updates `registry/manifest.json` and triggers `release-manifest.yml`,
-   which signs the manifest (cosign) and publishes a `manifest/v<n>`.
+7. Triggers `release-manifest.yml`, which builds from immutable releases,
+   signs the manifest, and proposes the manifest plus bundle as a reviewed PR
+   to `main`. Merging that PR publishes the updated installable catalog.
 
 Because **we build every tarball in-pipeline**, every entry carries our
 cosign signature *and* SLSA provenance — uniformly, core and community
@@ -63,9 +64,8 @@ whose SHA256 doesn't match — no files land on disk on mismatch.
 
 All serve the same signed manifest; only the path differs:
 
-- **GitHub Release `manifest/v<n>`** — canonical; what the engine verifies
-  and installs from.
-- **Raw on `main`** — advisory fast-discovery fallback.
+- **Signed manifest and bundle on `main`** — canonical; what the engine
+  verifies before installing. Raw GitHub URLs transport that pair.
 - **`packs.skillex.dev/manifest.json`** — memorable Worker endpoint.
 - **GitHub Pages index** — human-browsable; not an install source.
 
@@ -74,6 +74,16 @@ weaken integrity.
 
 ## Revoking a bad release
 
-A withdrawn version goes in `registry/revocations.json` (also signed); the
-engine checks revocations before install/refresh. See
-`skills/security-and-review.md`.
+The signed manifest's `revocations[]` records withdrawn versions. The initial
+consumer fetches a fresh manifest before install. Offline refresh authenticates
+cached evidence and checks its embedded revocations; it cannot discover later
+withdrawals. See `.specs/03-security.md`.
+
+## Correct a published schema mismatch
+
+Changing source does not repair an immutable archive. The example 0.1.0 was
+signed with the old manifest schema, so prepare 0.1.1 with current per-skill
+activation and registry metadata, publish through the protected workflow, and
+review its signed manifest update. Consumers must refuse invalid schemas even
+when their signatures and checksums verify. Do not overwrite old assets or
+hand-edit signed registry bytes.
