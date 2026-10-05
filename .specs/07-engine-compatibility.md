@@ -5,6 +5,12 @@ contract is `internal/packs/pack.go` at that release, not a moving engine
 checkout. Registry policy adds path-derived identity, publication metadata,
 regular portable skill-file paths, and the content/security gate.
 
+Repository commands use `scripts/run-skillex.cjs` to acquire and verify the
+same pinned release through the npm package. It waits for the child process
+to close and retries temporary-file removal to handle Windows file locks.
+This works around the 0.10.0 npm launcher's cleanup race; it does not change
+the released engine or repair npm launchers in other consumer projects.
+
 ## Pack manifests
 
 Supported top-level fields are `name`, `version`, `description`, `source`,
