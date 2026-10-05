@@ -57,7 +57,7 @@ unchanged.
 
 - `npm test`: tooling, manifest parity, activation, and local pack query/read.
 - `npm run test:contract`: released-CLI manifest/activation/local-pack fixtures;
-  CI runs these on Linux, macOS, and Windows with Node 20.
+  CI runs these on Ubuntu 22.04, macOS, and Windows with Node 20.
 - `npm run lint:packs`: registry policy plus manifest validation.
 - `npm run validate`: repository skill test structure.
 - `npm run test:published-pack`: an explicit network check against the canonical
