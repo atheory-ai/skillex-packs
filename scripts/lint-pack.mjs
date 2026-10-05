@@ -3,14 +3,14 @@
 // Implements the PR-time checks from .specs/03-security.md and the
 // acceptance criteria from .specs/04-canonical-vs-community.md.
 //
-// Operates on file bytes and paths only — independent of the pack.yaml
-// schema, so it is stable even while that schema is finalized in the engine.
+// Applies registry policy and the pinned Skillex engine manifest contract.
 //
 // Usage:
 //   node scripts/lint-pack.mjs [--json] [pathToPack ...]
 // With no path args, lints every discovered pack. Exits non-zero on any error.
 
 import { readFileSync, statSync } from "node:fs";
+import { validateEngineManifest } from "./lib/engine-manifest.mjs";
 import { relative, basename, join } from "node:path";
 import {
   discoverPacks, listFiles, readPackYaml, hasSymlink, extOf,
@@ -40,80 +40,6 @@ const INJECTION_PHRASES = [
 ];
 const TEXT_EXTS = new Set([".md", ".txt", ".yaml", ".yml", ".json"]);
 const REQUIRED_YAML_FIELDS = ["name", "version", "description"]; // engine fields; license is under registry:
-const VALID_SCOPES = new Set(["", "repo", "subtree", "directory", "matching-files", "nearest-ancestor", "boundary"]);
-const ACTIVATE_WHEN_KEYS = ["files-present", "files-matching", "dependency-declared", "detector"];
-
-function validateActivation(aw, p, err, depth = 0) {
-  if (depth > 32) { err(`${p} exceeds maximum activation nesting depth of 32`); return; }
-  if (!aw || typeof aw !== "object" || Array.isArray(aw)) {
-    err(`${p} must be a mapping`); return;
-  }
-  const hasLeaf = ACTIVATE_WHEN_KEYS.some((k) => {
-    const v = aw[k];
-    return Array.isArray(v) ? v.length > 0 : typeof v === "string" && v.trim() !== "";
-  });
-  if (aw.all !== undefined && aw.all !== null) {
-    if (!Array.isArray(aw.all) || aw.all.length === 0 || hasLeaf) {
-      err(`${p}.all must contain at least one condition and cannot be combined with leaf fields`); return;
-    }
-    aw.all.forEach((child, i) => validateActivation(child, `${p}.all[${i}]`, err, depth + 1));
-  } else if (!hasLeaf) {
-    err(`${p} must contain one of: ${ACTIVATE_WHEN_KEYS.join(", ")}, all`);
-  }
-}
-
-// Validate the engine manifest shape (mirrors internal/packs/pack.go Validate
-// in atheory-ai/skillex), so an engine-invalid pack fails here at PR time
-// rather than at install/activation.
-function validateEngineManifest(manifest, pack, err) {
-  const skills = manifest.skills;
-  if (!Array.isArray(skills) || skills.length === 0) {
-    err(`pack.yaml skills must contain at least one entry`);
-  } else {
-    skills.forEach((skill, i) => {
-      const p = `skills[${i}]`;
-      if (!skill || typeof skill !== "object") { err(`${p} must be a mapping`); return; }
-      if (skill["activates-when"] !== undefined) {
-        err(`${p} uses "activates-when" — the engine key is "activate-when"`);
-      }
-      if (!skill.file || typeof skill.file !== "string") {
-        err(`${p}.file is required`);
-      } else if (skill.file.startsWith("/") || skill.file.split("/").includes("..")) {
-        err(`${p}.file must be a relative path inside the pack`);
-      } else {
-        try { statSync(join(pack.dir, skill.file)); }
-        catch { err(`${p}.file "${skill.file}" not found`); }
-      }
-      validateActivation(skill["activate-when"], `${p}.activate-when`, err);
-      if (skill.scope !== undefined && !VALID_SCOPES.has(String(skill.scope))) {
-        err(`${p}.scope must be one of: repo, subtree, directory, matching-files, nearest-ancestor, boundary`);
-      }
-    });
-  }
-
-  const detectors = manifest.detectors;
-  if (detectors !== undefined) {
-    if (typeof detectors !== "object" || Array.isArray(detectors)) {
-      err(`detectors must be a mapping of name -> { matches: [...] }`);
-    } else {
-      for (const [name, def] of Object.entries(detectors)) {
-        const dp = `detectors[${name}]`;
-        const matches = def && def.matches;
-        if (!Array.isArray(matches) || matches.length === 0) {
-          err(`${dp}.matches must contain at least one entry`);
-          continue;
-        }
-        matches.forEach((m, j) => {
-          if (!m || (m.file === undefined && m.dependency === undefined)) {
-            err(`${dp}.matches[${j}] must contain file or dependency`);
-          } else if (m.file !== undefined && (!m.file || !m.file.path)) {
-            err(`${dp}.matches[${j}].file.path is required`);
-          }
-        });
-      }
-    }
-  }
-}
 
 function lintPack(pack, sink) {
   const err = (msg) => sink.errors.push(`${pack.name}: ${msg}`);
@@ -148,7 +74,9 @@ function lintPack(pack, sink) {
   } catch (e) {
     err(`pack.yaml does not parse: ${e.message}`);
   }
-  if (manifest) {
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+    err("pack.yaml must contain a manifest mapping");
+  } else {
     for (const f of REQUIRED_YAML_FIELDS) {
       if (manifest[f] === undefined || manifest[f] === null || manifest[f] === "") {
         err(`pack.yaml missing required field "${f}"`);
