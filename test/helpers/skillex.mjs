@@ -34,12 +34,12 @@ export function runSkillex(project, args, options = {}) {
   return result;
 }
 
-export function refresh(project) {
-  const result = runSkillex(project, ["refresh"]);
+export function refresh(project, options = {}) {
+  const result = runSkillex(project, ["refresh"], options);
   assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Warnings:|parsing .*pack\.yaml|invalid pack/);
   return result;
 }
 
-export function query(project, args = []) {
-  return JSON.parse(runSkillex(project, ["query", ...args, "--json"]).stdout);
+export function query(project, args = [], options = {}) {
+  return JSON.parse(runSkillex(project, ["query", ...args, "--json"], options).stdout);
 }
