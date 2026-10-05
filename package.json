@@ -12,9 +12,9 @@
     "ecosystems/*"
   ],
   "scripts": {
-    "doctor": "skillex doctor",
-    "refresh": "skillex refresh",
-    "validate": "skillex test validate",
+    "doctor": "node node_modules/@atheory-ai/skillex/bin/skillex.js doctor",
+    "refresh": "node node_modules/@atheory-ai/skillex/bin/skillex.js refresh",
+    "validate": "node node_modules/@atheory-ai/skillex/bin/skillex.js test validate",
     "test": "node --test test/*.test.mjs",
     "lint:packs": "node scripts/lint-pack.mjs",
     "build:pack": "node scripts/build-pack.mjs",
@@ -22,7 +22,7 @@
     "check:packs": "node scripts/lint-pack.mjs && node scripts/build-manifest.mjs --check"
   },
   "devDependencies": {
-    "@atheory-ai/skillex": "^0.7.0",
+    "@atheory-ai/skillex": "0.10.0",
     "yaml": "^2.9.0"
   },
   "engines": {
