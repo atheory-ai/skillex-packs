@@ -68,6 +68,14 @@ whose SHA256 doesn't match — no files land on disk on mismatch.
 
 ## Where a published pack shows up (discovery surfaces)
 
+After merging the signed manifest publication PR, run
+`npm run test:published-pack` to check the canonical example through the pinned
+Skillex 0.10.0 consumer. This network check verifies preview, installation,
+saved evidence, offline discovery, and rejection of changed installed files.
+It does not create tags, publish assets, or modify committed signed evidence.
+The example's expected identity and digest come from the committed manifest.
+See `.specs/07-engine-compatibility.md` for CI coverage and consumer limits.
+
 All serve the same signed manifest; only the path differs:
 
 - **Signed manifest and bundle on `main`** — canonical; what the engine

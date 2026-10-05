@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const ROOT = fileURLToPath(new URL("../../", import.meta.url));
-const CLI = join(ROOT, "node_modules/@atheory-ai/skillex/bin/skillex.js");
+const CLI = join(ROOT, "scripts/run-skillex.cjs");
 
 export function writeProjectFile(project, path, content) {
   const destination = join(project, path);
@@ -16,7 +16,7 @@ export function writeProjectFile(project, path, content) {
 
 export function createProject(t, files = {}) {
   const project = mkdtempSync(join(tmpdir(), "skillex-0.10-contract-"));
-  t.after(() => rmSync(project, { recursive: true, force: true }));
+  t.after(() => rmSync(project, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
   writeProjectFile(project, "skillex.json", JSON.stringify({ Version: 4, Rules: [] }));
   writeProjectFile(project, "package.json", JSON.stringify({ name: "contract-fixture", private: true }));
   writeProjectFile(project, ".fixture-trust.yaml", "Version: 1\n");

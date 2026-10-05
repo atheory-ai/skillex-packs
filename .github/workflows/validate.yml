@@ -39,11 +39,10 @@ jobs:
         run: npm run build:manifest -- --out registry/build/_validate-manifest.json
 
       # Repo skill test files are well-formed (.specs / skillex convention).
-      # Invoked via node directly rather than the .bin shim: some npm
-      # versions on CI runners don't link the platform-binary wrapper's bin,
-      # though the package itself installs fine.
+      # The repository runner uses the pinned release and retries temporary
+      # executable cleanup after the child closes, including on Windows.
       - name: Validate skills
-        run: node node_modules/@atheory-ai/skillex/bin/skillex.js test validate
+        run: npm run validate
 
       # Tamper guard: if a signed manifest is committed, it MUST still verify
       # against its committed signature and have been produced by the

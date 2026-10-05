@@ -8,11 +8,11 @@ import { fileURLToPath } from "node:url";
 import { discoverPacks, packFileEntries } from "../scripts/lib/packs.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SKILLEX = join(ROOT, "node_modules/@atheory-ai/skillex/bin/skillex.js");
+const SKILLEX = join(ROOT, "scripts/run-skillex.cjs");
 
 function materializePack(pack, t) {
   const project = mkdtempSync(join(tmpdir(), "skillex-pack-compat-"));
-  t.after(() => rmSync(project, { recursive: true, force: true }));
+  t.after(() => rmSync(project, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
   const packRoot = join(project, "skillex");
   mkdirSync(packRoot, { recursive: true });
   for (const entry of packFileEntries(pack)) {
