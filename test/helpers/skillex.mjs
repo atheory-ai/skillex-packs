@@ -19,13 +19,15 @@ export function createProject(t, files = {}) {
   t.after(() => rmSync(project, { recursive: true, force: true }));
   writeProjectFile(project, "skillex.json", JSON.stringify({ Version: 4, Rules: [] }));
   writeProjectFile(project, "package.json", JSON.stringify({ name: "contract-fixture", private: true }));
+  writeProjectFile(project, ".fixture-trust.yaml", "Version: 1\n");
   for (const [path, content] of Object.entries(files)) writeProjectFile(project, path, content);
   return project;
 }
 
 export function runSkillex(project, args, options = {}) {
   const result = spawnSync(process.execPath, [CLI, ...args], {
-    cwd: project, encoding: "utf8", timeout: 60_000, ...options,
+    cwd: project, encoding: "utf8", timeout: 60_000,
+    env: { ...process.env, SKILLEX_MCP_TRUST_CONFIG: join(project, ".fixture-trust.yaml") }, ...options,
   });
   assert.ifError(result.error);
   assert.equal(result.status, 0, `${args.join(" ")}:\n${result.stdout}\n${result.stderr}`);
