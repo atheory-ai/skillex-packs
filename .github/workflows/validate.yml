@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    # Explicit image avoids the rolling label's runner allocation failures.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       # Pinned Node keeps the deterministic tarball/manifest reproducible
