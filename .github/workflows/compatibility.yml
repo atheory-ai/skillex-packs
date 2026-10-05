@@ -1,0 +1,43 @@
+name: compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  engine-contract:
+    name: Skillex 0.10 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run test:contract
+      - run: npm run lint:packs
+      - run: npm run validate
+
+  published-pack:
+    name: Published example / Skillex 0.10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      # Public artifacts only; the engine verifies its bundled signer identity.
+      # This check installs into disposable fixtures and never publishes assets.
+      - run: npm run test:published-pack

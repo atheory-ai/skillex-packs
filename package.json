@@ -16,6 +16,7 @@
     "refresh": "node node_modules/@atheory-ai/skillex/bin/skillex.js refresh",
     "validate": "node node_modules/@atheory-ai/skillex/bin/skillex.js test validate",
     "test": "node --test test/*.test.mjs",
+    "test:contract": "node --test test/manifest-contract.test.mjs test/activation-contract.test.mjs test/skillex-compat.test.mjs",
     "test:published-pack": "node --test test/live/published-pack.test.mjs",
     "lint:packs": "node scripts/lint-pack.mjs",
     "build:pack": "node scripts/build-pack.mjs",

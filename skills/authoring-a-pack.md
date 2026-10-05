@@ -54,7 +54,9 @@ ecosystems/javascript/packs/alice/tool.eslint.airbnb/
 
 ## Step 2 — write `pack.yaml`
 
-`pack.yaml` is **engine fields** + a **`registry:` block** the engine ignores:
+`pack.yaml` contains strict engine fields plus the supported **`registry:`
+metadata block**. Skillex 0.10 rejects unknown engine fields, including nested
+ones; registry publication metadata stays inside this block.
 
 ```yaml
 # --- engine fields (parsed by @atheory-ai/skillex) ---
@@ -77,8 +79,9 @@ skills:
     scope: subtree                 # repo|subtree|directory|matching-files|
   - file: skills/server-actions.md #   nearest-ancestor|boundary
     activate-when:
-      detector: nextjs
-      files-matching: ["**/actions.{ts,js}"]
+      all:
+        - detector: nextjs
+        - files-matching: ["**/actions.{ts,js}"]
     scope: matching-files
     files: ["**/actions.{ts,js}"]
 
@@ -90,7 +93,7 @@ registry:
   compatibility:                   # forward-looking; not consumed by the engine yet
     node: ">=20"
     nextjs: ">=14 <16"
-    skillex: ">=0.7 <2"
+    skillex: ">=0.10 <0.11"
 ```
 
 Watch the gotchas: the activation key is **`activate-when`** (hyphen), there
@@ -99,6 +102,43 @@ per-skill), and **no `tier:`** (derived from the handle). Engine fields vs the
 `registry:` block are kept separate so `pack.yaml` stays a valid engine
 manifest; the source of truth for engine fields is `internal/packs/pack.go` in
 `atheory-ai/skillex`. Run `npm run lint:packs` to check yours.
+
+Leaf activation fields are alternatives. Use `all` when every condition must
+match; do not put leaf fields beside `all` at the same level. Nested lists are
+allowed up to depth 32. Test both matching and nonmatching projects, then use
+path-filtered discovery to check where guidance applies. Dependency-shipped
+packs require configured consumer `Rules[].DependencyBoundary` entries;
+`dependency-declared.version` matches the declared version string exactly.
+
+### MCP-only and mixed packs
+
+A pack can contain `skills`, `mcp-servers`, or both; at least one must be
+nonempty. For an MCP-only pack, omit `skills` and declare suggestions:
+
+```yaml
+mcp-servers:
+  - ref: io.github.example/docs
+    version: "1.2.3"
+    relationship: suggested
+    activate-when:
+      all:
+        - detector: javascript
+        - files-present: [docs.config.json]
+    scope: repo
+    capabilities:
+      prefer: [docs.search]
+```
+
+Keep identity, version, description, and `registry` metadata as above. MCP
+versions must be exact and the relationship must be `suggested`. Activation,
+scope, and optional `files` use the same rules as skills. Packs cannot include
+server commands, endpoints, transports, environment variables, or credentials.
+
+Consumers must explicitly opt in with configuration Version 5,
+`MCP.Enabled: true`, and at least one `MCP.Bindings` entry. Suggestions alone
+do not configure or authorize a server. Without a trusted transport they
+remain setup-required. See `.specs/07-engine-compatibility.md` for the tested
+scope behavior, commands, and limits of the 0.10 consumer.
 
 ## Step 3 — write the skills
 
@@ -169,7 +209,9 @@ do.
 ## Step 6 — validate, sign off, PR
 
 ```
-npm run validate                       # schema + lint + structural checks
+npm run lint:packs                     # engine manifest + registry content gate
+npm test                               # tooling and released-CLI contracts
+npm run validate                       # repository skill test structure
 git checkout -b pack/<name>
 git commit -s -S -m "feat(pack): <name>@0.1.0"   # -s = DCO sign-off, -S = signed commit
 git push -u origin pack/<name>

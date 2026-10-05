@@ -241,8 +241,9 @@ skills:
     scope: subtree            # repo|subtree|directory|matching-files|
   - file: skills/server-actions.md   #     nearest-ancestor|boundary
     activate-when:
-      detector: nextjs
-      files-matching: ["**/actions.{ts,js}"]
+      all:
+        - detector: nextjs
+        - files-matching: ["**/actions.{ts,js}"]
     scope: matching-files
     files: ["**/actions.{ts,js}"]
 
@@ -258,9 +259,10 @@ registry:
 
 > **Engine vs registry, deliberately separated.** The engine activates packs
 > via `detectors` + per-skill `activate-when`/`scope`; it has no
-> `compatibility`, tiers, or signing. Those live in the `registry:` block (and
-> the signed manifest) as the registry's forward-looking layer — the engine
-> ignores unknown top-level keys, so `pack.yaml` stays a valid engine manifest.
+> compatibility-range activation or tier-based activation. Publication metadata
+> lives in the supported `registry:` block and the signed registry manifest.
+> Skillex 0.10 strictly rejects unknown engine fields; `registry` is explicitly
+> accepted. See `07-engine-compatibility.md` for supported formats and checks.
 
 ## Monorepo workspace boundaries
 

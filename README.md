@@ -221,17 +221,21 @@ npm run lint:packs   # security/content/naming gate
 npm run build:manifest  # build the manifest from packs (structure check)
 npm test             # tooling tests (node:test)
 npm run validate     # validate the repo's own skill test files
+npm run test:contract  # manifest + activation + query/read with Skillex 0.10.0
+npm run test:published-pack  # live signed release lifecycle; needs GitHub access
 ```
 
 ---
 
 ## Status
 
-The design (`.specs/`) is complete and the **build → sign → attest → manifest
-→ publish** pipeline is live and proven end to end, with a first signed
-manifest and an example pack release in place. Canonical seed packs are next,
-pending `pack.yaml` schema alignment with the engine. Roadmap:
-[`.specs/00-overview.md`](.specs/00-overview.md).
+The **build → sign → attest → manifest → publish** pipeline is live, with
+example 0.1.1 in the signed registry. Tooling pins Skillex 0.10.0 and supports
+skill-only, MCP-only, and mixed packs. CI checks the engine contract on Linux,
+macOS, and Windows and separately exercises the published example lifecycle.
+Supported formats, verification gates, and consumer limitations are in
+[`.specs/07-engine-compatibility.md`](.specs/07-engine-compatibility.md).
+Canonical seed packs are next; see [the roadmap](.specs/00-overview.md).
 
 ## License
 

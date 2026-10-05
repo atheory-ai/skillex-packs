@@ -33,6 +33,12 @@ packs so that:
 
 ## Roadmap
 
+The shipped 0.10 consumer provides verified `pack get` and `pack list`, backed
+by the signed manifest on `main` and immutable example 0.1.1. The table below
+describes the broader design; compatibility resolution, federation, and the
+remaining pack-management/MCP installation commands are future work. See
+`07-engine-compatibility.md` for the current contract and verification gates.
+
 | Phase | Deliverable | Gate |
 |---|---|---|
 | **P0 — Spec freeze** | These docs reach consensus. Pack manifest schema (`pack.yaml` v1) is locked. | Spec PR review by atheory-ai |

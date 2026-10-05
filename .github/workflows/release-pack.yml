@@ -30,6 +30,9 @@ jobs:
           cache: npm
       - run: npm ci
 
+      - name: Test tooling and engine contracts
+        run: npm test
+
       - name: Parse tag
         id: tag
         run: |
