@@ -21,8 +21,8 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # Unit/integration tests for the registry tooling (lint gate, tarball
-      # determinism, manifest builder).
+      # Unit/integration tests for registry tooling plus pack load/query/read
+      # journeys through the pinned released Skillex CLI.
       - name: Test tooling
         run: npm test
 
