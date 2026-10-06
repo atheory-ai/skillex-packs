@@ -1,0 +1,157 @@
+name: atheory-ai.polyglot.pattern.application-design
+version: 0.1.0
+description: Application task, interface design, and contract-oriented shell
+  guidance for web, desktop, and mobile apps (unpublished draft).
+skills:
+  - file: skills/task-model.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/shell-regions.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/navigation-location.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/action-scope.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/capability-contracts.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/commands-events.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/framework-adapters.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/state-ownership.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/selection-inspectors.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/notification-policy.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/form-validation.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/draft-saving.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/async-operations.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/undo-recovery.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/keyboard-focus.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/adaptive-layout.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/canvas-interaction.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/experience-review.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/web-location.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/desktop-windows.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/mobile-transitions.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/work-surfaces.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/visual-hierarchy.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/information-density.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/control-affordances.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/labels-vocabulary.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/editing-surfaces.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/empty-states.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+  - file: skills/progressive-disclosure.md
+    activate-when:
+      files-present:
+        - application-design.yaml
+    scope: repo
+registry:
+  license: Apache-2.0
+  authors:
+    - atheory-ai
+  homepage: https://github.com/atheory-ai/skillex-packs/tree/main/ecosystems/polyglot/packs/atheory-ai/pattern.application-design
+  compatibility:
+    skillex: ">=0.10 <0.11"
