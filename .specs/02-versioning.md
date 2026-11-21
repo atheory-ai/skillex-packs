@@ -124,15 +124,13 @@ the `registry:` block express the link, mirrored into the manifest entry:
 - `registry.replaces: <old-name>` on the **new** pack — the inverse pointer,
   so the chain is walkable from either end.
 
-Engine behavior:
-
-- On `skillex packs update`, a locally-installed pack carrying
-  `superseded-by` resolves to its successor (subject to the same
-  `compatibility` filtering), after showing the rename in the install diff.
-- A fresh `skillex packs install <old-name>` warns and installs the
-  successor.
-- Supersession is **not** a trust shortcut: a rename across handles
-  (community → core) still passes the full review gate for the new pack.
+A fresh `skillex pack get <old-name>` installs the selected compatible release
+under the requested name. With an installed pack, `skillex pack update --preview`
+can propose a rename when the selected compatible releases declare reciprocal
+links. The preview shows both names, versions and publisher handles. Applying
+it requires explicit `--replace old-name=new-name` consent for each rename,
+including in a bulk update. Keep the announcing release discoverable while
+older installations should receive the proposal.
 
 This is the `replaces` / `superseded-by` chain referenced by core-pack
 deprecation in `04-canonical-vs-community.md` and carried in the manifest
