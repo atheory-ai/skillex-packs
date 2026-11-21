@@ -120,6 +120,8 @@ skillex query --topic example
 Check the same discovery through `skillex_query` over MCP. Offline refresh and
 query must work from saved authenticated evidence; an offline snapshot cannot
 observe later revocations. The example is pipeline test content, not production
-JavaScript guidance. The consumer currently verifies the signed manifest and
-its pinned archive digest; additional archive-signature/provenance verification
-is tracked separately in `atheory-ai/skillex#94`.
+JavaScript guidance. With Skillex 0.14.0, a successful preview checks the
+manifest and pinned archive. With the consumer in
+[skillex#117](https://github.com/atheory-ai/skillex/pull/117), the same
+preview also checks the archive signature and SLSA build provenance.
+Use that consumer to smoke-test both producer artifacts.
