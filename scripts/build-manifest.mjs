@@ -22,6 +22,7 @@ import {
   tarballName, tarballUrl, REGISTRY,
 } from "./lib/packs.mjs";
 import { readRevocations } from "./lib/revocations.mjs";
+import { identity, indexVersions, retainedVersions, sortedVersions } from "./lib/supported-versions.mjs";
 import { buildTarGz } from "./lib/tar.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -42,7 +43,8 @@ function digestFromRelease(pack, version) {
   const asset = tarballName(pack.name, version);
   try {
     execFileSync("gh", ["release", "view", tag, "--json", "tagName"], { stdio: "pipe" });
-  } catch {
+  } catch (err) {
+    if (!/release not found/i.test(err.stderr?.toString() ?? "")) throw err;
     return null; // not released
   }
   const tmp = mkdtempSync(join(tmpdir(), "skillex-manifest-"));
@@ -69,8 +71,7 @@ function digestFromRebuild(pack, version) {
   return { sha256, size };
 }
 
-function packEntry(pack) {
-  const manifest = readPackYaml(pack.dir);
+function packEntry(pack, manifest) {
   const version = String(manifest.version);
 
   const digest = fromReleases ? digestFromRelease(pack, version) : digestFromRebuild(pack, version);
@@ -104,12 +105,24 @@ function packEntry(pack) {
 
 function build() {
   const revocations = readRevocations(root);
-  const packs = discoverPacks(root);
+  const previous = indexVersions(JSON.parse(readFileSync(join(root, "registry/manifest.json"), "utf8")).packs);
+  const entries = retainedVersions(root, previous);
+  for (const pack of discoverPacks(root)) {
+    const manifest = readPackYaml(pack.dir);
+    const key = identity({ name: pack.name, version: manifest.version });
+    if (entries.has(key)) continue;
+    if (fromReleases && previous.has(key)) {
+      entries.set(key, previous.get(key));
+      continue;
+    }
+    const entry = packEntry(pack, manifest);
+    if (entry) entries.set(key, entry);
+  }
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     registry: REGISTRY,
-    packs: packs.map(packEntry).filter(Boolean),
+    packs: sortedVersions(entries.values()),
     revocations,
   };
 }

@@ -45,6 +45,11 @@ CI workflow `release-pack.yml` triggers on these tags:
 
 ### Manifest publishing — a reviewed PR to `main`
 
+Fresh entries acquire their pins from released archives. The publisher verifies
+the previous catalog and carries forward its entries for current and explicitly
+retained releases. See [coexisting versions](02-versioning.md#multiple-coexisting-majors)
+for the retention policy.
+
 The manifest is a **version-controlled artifact on `main`**
 (`registry/manifest.json` + `.bundle`), updated via a reviewed pull
 request — not a GitHub Release. This is the only write path that fits the

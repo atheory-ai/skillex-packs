@@ -46,11 +46,19 @@ jobs:
           cache: npm
       - run: npm ci
 
-      - name: Build manifest from published release assets
-        run: npm run build:manifest -- --from-releases
-
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
+
+      - name: Verify the catalog used for version retention
+        run: |
+          cosign verify-blob \
+            --bundle registry/manifest.json.bundle \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity https://github.com/atheory-ai/skillex-packs/.github/workflows/release-manifest.yml@refs/heads/main \
+            registry/manifest.json
+
+      - name: Build manifest from published release assets
+        run: npm run build:manifest -- --from-releases
 
       - name: Sign manifest (keyless, bundle)
         run: |
