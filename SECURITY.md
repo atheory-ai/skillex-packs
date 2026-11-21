@@ -24,12 +24,25 @@ achieve, and reproduction steps. Examples of in-scope issues:
 
 - **Triage targets:** mitigation within **24h** for critical
   (publicly-exploitable prompt-injection) and **7 days** for high severity.
-- **Revocation:** an affected pack version is added to
-  `registry/revocations.json` (signed); the engine refuses to install or
-  refresh revoked versions.
+- **Revocation:** maintainers record the affected version and a public reason in
+  `registry/revocations.json`. The signed catalog carries that list to consumers.
 - **Unresponsive owners:** for a community pack whose owner does not address
   a security issue, atheory-ai patches or withdraws the pack under its
   standing security veto (`.specs/04-canonical-vs-community.md`).
+
+## Withdrawing a published version
+
+1. Open a reviewed PR adding an entry to `registry/revocations.json`. Use the
+   full pack name, the exact published version, and a public reason. For example,
+   `{"name":"owner.javascript.tool.example","version":"1.2.3","reason":"Incorrect migration guidance can delete user data"}`.
+   Keep earlier withdrawals, including versions that have left the catalog.
+2. After merge, run `gh workflow run release-manifest.yml --ref main` in this
+   repository. This rebuilds and signs the catalog between pack releases.
+3. Review the manifest and bundle PR, checking the exact entry and the other
+   catalog changes. Squash-merge to publish. Consumers receive the withdrawal
+   when they fetch the signed catalog. An engine with `skillex pack check`
+   can apply it to an existing installation and report the reason with
+   `skillex pack list`. Ordinary refresh uses the most recent saved evidence.
 
 ## Integrity guarantees (how trust reaches a consumer)
 

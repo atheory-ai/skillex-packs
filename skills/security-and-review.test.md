@@ -20,3 +20,11 @@ Prompt: A mirror serves a pack named `atheory-ai.javascript.tool.eslint`. How do
 Success criteria:
   - Trust binds to the handle: `atheory-ai.*` must verify against the engine-bundled atheory-ai root regardless of source.
   - Mismatched signatures are rejected (mirror-yes, forge-no).
+
+## Validation: withdraw a version between releases
+
+Prompt: A maintainer needs to withdraw one published pack version today. What is the publication and consumer procedure?
+Success criteria:
+  - Add the exact name, version, and public reason to the reviewed revocations list, retaining earlier withdrawals.
+  - Dispatch the manifest workflow from main after merge and merge its reviewed signed catalog PR.
+  - Use pack check on a supporting engine to apply the signed withdrawal to an existing installation.

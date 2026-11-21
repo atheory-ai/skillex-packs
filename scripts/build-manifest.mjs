@@ -21,6 +21,7 @@ import {
   discoverPacks, readPackYaml, relative, packFileEntries,
   tarballName, tarballUrl, REGISTRY,
 } from "./lib/packs.mjs";
+import { readRevocations } from "./lib/revocations.mjs";
 import { buildTarGz } from "./lib/tar.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -102,13 +103,14 @@ function packEntry(pack) {
 }
 
 function build() {
+  const revocations = readRevocations(root);
   const packs = discoverPacks(root);
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     registry: REGISTRY,
     packs: packs.map(packEntry).filter(Boolean),
-    revocations: [],
+    revocations,
   };
 }
 

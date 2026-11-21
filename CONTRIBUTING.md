@@ -85,6 +85,20 @@ me"). Details in `skills/contributing-and-dco.md`.
 atheory-ai retains a standing veto for security violations. See
 `skills/security-and-review.md`.
 
+## Testing registry withdrawals
+
+Run `npm ci` and `npm test` for the publisher tests. To repeat the signed
+consumer test locally, point `SKILLEX_ENGINE_DIR` at a Skillex source checkout
+with `pack check` and its Go toolchain installed:
+
+```sh
+SKILLEX_ENGINE_DIR=../skillex node --test test/published-withdrawal.test.mjs
+```
+
+CI pins the engine revision in the validate workflow. The test builds two
+fixture packs, signs two generated catalogs with the engine's test signer,
+and checks discovery and reads through one running MCP process.
+
 ## Reporting security issues
 
 Do not open a public issue for a vulnerability. Use GitHub Security

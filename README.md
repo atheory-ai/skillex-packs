@@ -79,8 +79,9 @@ being uncompromised. (Full threat model: [`.specs/03-security.md`](.specs/03-sec
 - **Provenance of contributions.** Commits require a DCO sign-off
   (`Signed-off-by`) and cryptographic signatures; `main` is protected
   (required PR + checks + signed commits, no bot bypass).
-- **Revocation.** A signed `registry/revocations.json` lets the engine refuse
-  a withdrawn pack version before installing or refreshing.
+- **Revocation.** Maintainers review withdrawals in `registry/revocations.json` and publish them
+  in the signed manifest. Engines with `skillex pack check` can apply new withdrawals
+  to existing installations. See the [maintainer procedure](SECURITY.md#withdrawing-a-published-version).
 
 ---
 

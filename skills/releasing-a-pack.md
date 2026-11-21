@@ -80,10 +80,11 @@ weaken integrity.
 
 ## Revoking a bad release
 
-The signed manifest's `revocations[]` records withdrawn versions. The initial
-consumer fetches a fresh manifest before install. Offline refresh authenticates
-cached evidence and checks its embedded revocations; it cannot discover later
-withdrawals. See `.specs/03-security.md`.
+Merge the reviewed `registry/revocations.json` addition, run
+`gh workflow run release-manifest.yml --ref main`, and review and merge the signed
+manifest PR. Follow `SECURITY.md` for the entry format. On supporting engines,
+`skillex pack check` fetches the signed withdrawal and disables installed guidance.
+Offline refresh uses the last saved evidence.
 
 ## Correct a published schema mismatch
 
