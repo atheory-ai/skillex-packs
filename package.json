@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@atheory-ai/skillex": "0.10.0",
+    "semver": "^7.8.6",
     "yaml": "^2.9.0"
   },
   "engines": {

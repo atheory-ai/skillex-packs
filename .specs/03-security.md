@@ -128,8 +128,9 @@ mitigate at three layers:
   for security reasons. The MVP checks a freshly fetched manifest before
   installation. Offline refresh re-verifies cached signed evidence and
   installed contents; it cannot discover revocations published afterward.
-  A separate signed revocation feed and online refresh policy remain future
-  work.
+  Maintainers review withdrawals in `registry/revocations.json` and publish
+  them in the signed manifest. Engines with `skillex pack check` fetch it
+  explicitly and disable affected installed versions.
 - Time-to-mitigation goal: < 24h for critical (publicly exploitable
   prompt-injection), < 7d for high.
 

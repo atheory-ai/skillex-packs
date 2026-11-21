@@ -168,7 +168,8 @@ records exactly which manifest entry it installed from, including the
 sha256 it verified. Offline refresh verifies the saved signature, pinned archive, and extracted
 contents against authenticated evidence. It also checks embedded revocations
 in that saved manifest; it cannot observe later revocations without fetching a
-new signed manifest.
+new signed manifest. Engines with `skillex pack check` fetch the signed
+catalog explicitly and retain its revocation evidence for offline refresh.
 
 ### Vendoring (local cache in project git)
 

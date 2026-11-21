@@ -26,6 +26,13 @@ jobs:
       - name: Test tooling
         run: npm test
 
+      - name: Preserve reviewed and published withdrawals
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          node scripts/check-revocations.mjs "$BASE_SHA"
+
       # Pack security / content / naming gate (.specs/03 + 04).
       - name: Lint packs
         run: npm run lint:packs
@@ -79,3 +86,21 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --certificate-identity-regexp '^https://github\.com/atheory-ai/skillex-packs/\.github/workflows/release-manifest\.yml@' \
             registry/manifest.json
+
+      # The npm consumer pinned for pack compatibility predates pack check.
+      # Pin the engine fixture API used to sign and consume publisher test data.
+      - name: Check out the pack-check consumer
+        uses: actions/checkout@v4
+        with:
+          repository: atheory-ai/skillex
+          ref: 93a424bf58c7476f92492eed3be8a73f5254d2d0
+          path: .engine-fixture
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .engine-fixture/go.mod
+          cache-dependency-path: .engine-fixture/go.sum
+      - name: Check a signed withdrawal through CLI and running MCP
+        env:
+          SKILLEX_ENGINE_DIR: .engine-fixture
+        run: node --test test/published-withdrawal.test.mjs

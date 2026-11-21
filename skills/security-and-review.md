@@ -72,7 +72,8 @@ never address the agent** ("as an AI you should…"). See
 
 ## Revocations & response
 
-A withdrawn version is listed in `registry/revocations.json` (also signed);
-the engine checks it before install/refresh. Targets: critical
+Record the exact version and public reason in `registry/revocations.json`.
+Follow the publication steps in `SECURITY.md` to include the entry in the signed manifest.
+Use `skillex pack check` on supporting engines to update existing installations. Targets: critical
 (publicly-exploitable prompt-injection) mitigated < 24h, high < 7d. Private
 reporting via GitHub Security Advisories.
