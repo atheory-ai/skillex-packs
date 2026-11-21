@@ -26,44 +26,31 @@ being happy?"* If yes, MAJOR.
 
 ## Compatibility metadata
 
-**Registry-layer, forward-looking:** the engine has no `compatibility`
-concept (it activates via detectors + `activate-when`), so this lives in
-`pack.yaml`'s **`registry:` block** and the signed manifest — used by the
-registry and the future install path, ignored by the engine today.
+Declare engine compatibility in the source pack:
 
 ```yaml
 registry:
   compatibility:
-    # runtime / language baseline. For a JS pack the runtime lives here,
-    # because the ecosystem segment is the language:
-    node: ">=20"        # or bun / deno; or go / python in other ecosystems
-    nextjs: ">=14 <16"  # framework / library ranges
-    skillex: ">=0.7 <2" # engine version authored against
+    skillex: ">=1 <2"
+    node: ">=20"
 ```
 
-- All ranges use npm's semver grammar (normalized for Go/PyPI too) — one
-  parser.
-- Unknown detected runtime → runtime-dependent constraints are treated as
-  unsatisfied; the pack won't auto-install (user can `--force`).
-- A pack requiring `skillex: ">=2"` is ignored by a 1.x engine.
-
-There is **no `not:` operator.** Exclude a single bad version by tightening
-the range (`>=14 <14.2.3 || >14.2.3 <16`) or, for a security problem, via a
-revocation (`skills/security-and-review.md`).
-
-## Resolving which version installs
-
-Filter manifest entries by name → keep those whose `compatibility` the
-detected environment satisfies → pick the highest semver. Same algorithm as
-npm / cargo / Go modules.
+Skillex 0.14.0 selects the newest advertised stable pack compatible with the
+running engine. Other runtime ranges are advisory. Changing which engines a
+pack supports requires a new pack release.
 
 ## Coexisting majors
 
-Multiple majors live in the manifest at once; a Next 13 project gets the
-`1.x` pack, a Next 15 project gets `2.x`. On disk we keep **one source
-directory**; older majors live on a `maint/<name>-1.x` branch and `main`
-carries the newest. Release tags are per pack+version (see
-`skills/releasing-a-pack.md`).
+Before or alongside the version bump, add the supported older release to
+`registry/supported-versions.json` as an object with `name` and exact `version`.
+Choose a release still present in the signed catalog. The publisher carries
+forward its original compatibility and archive pin. The current source release
+is advertised automatically.
+
+Remove an older release from the list to retire it from discovery. Dispatch
+`release-manifest` and merge the resulting catalog PR to publish the change.
+For an unsafe release, publish a reviewed revocation as well so clients can
+disable installed guidance with `skillex pack check`.
 
 ## Fork into a new name vs. bump the major
 

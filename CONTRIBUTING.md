@@ -85,19 +85,28 @@ me"). Details in `skills/contributing-and-dco.md`.
 atheory-ai retains a standing veto for security violations. See
 `skills/security-and-review.md`.
 
-## Testing registry withdrawals
+## Keeping an earlier release available
+
+Add the exact pack name and version to `registry/supported-versions.json`
+before it leaves the signed catalog. Remove the declaration and publish the
+catalog to retire that version from discovery. See the
+[versioning procedure](.specs/02-versioning.md#multiple-coexisting-majors)
+for an example and the separate withdrawal procedure.
+
+## Testing catalog publication
 
 Run `npm ci` and `npm test` for the publisher tests. To repeat the signed
 consumer test locally, point `SKILLEX_ENGINE_DIR` at a Skillex source checkout
-with `pack check` and its Go toolchain installed:
+with the compatible pack resolver and its Go toolchain installed:
 
 ```sh
 SKILLEX_ENGINE_DIR=../skillex node --test test/published-withdrawal.test.mjs
 ```
 
-CI pins the engine revision in the validate workflow. The test builds two
-fixture packs, signs two generated catalogs with the engine's test signer,
-and checks discovery and reads through one running MCP process.
+CI pins the engine revision in the validate workflow. The fixture publishes
+two versions, verifies which archive each engine installs and exercises the
+no-match case. It also checks the effect of a signed withdrawal on discovery
+and reads through a running MCP process.
 
 ## Reporting security issues
 

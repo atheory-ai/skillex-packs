@@ -4,9 +4,9 @@
 
 - **Packs use semver.** `MAJOR.MINOR.PATCH`.
 - **Compatibility with the world outside the pack** lives in
-  `pack.yaml → compatibility:`, not in the directory name.
+  `pack.yaml → registry.compatibility`, not in the directory name.
 - **Multiple pack major versions can coexist** in the registry and the
-  engine picks the highest one compatible with the detected environment.
+  engine picks the highest one compatible with the running Skillex version.
 - **One source directory normally yields one pack name.** Forks for
   fundamentally incompatible eras (e.g. Next.js Pages vs App routers)
   should be **separate pack names**, not separate directories of the same
@@ -27,14 +27,9 @@ being happy?" If yes, MAJOR.
 
 ## Compatibility metadata
 
-> **Status: registry-layer, forward-looking.** The skillex engine today has
-> **no** `compatibility`/semver-range concept — it decides applicability via
-> `detectors` + `activate-when` (see `01-naming-and-structure.md`). So
-> `compatibility` lives in `pack.yaml`'s **`registry:` block** (and the signed
-> manifest), where the registry uses it for display and for the future
-> install/resolution path the engine's own spec anticipates. It is **not**
-> consumed by the engine's current activation. Everything in this section
-> describes that registry-layer resolution model.
+Skillex 0.14.0 uses the signed `compatibility.skillex` range when selecting
+a pack. Other runtime and framework ranges are advisory. Pack activation
+after installation still uses detectors and `activate-when`.
 
 Every pack version declares which world it works in (under `registry:`):
 
@@ -55,56 +50,38 @@ registry:
     skillex: ">=0.7 <2"
 ```
 
-Rules:
+## Resolving which version installs
 
-- Ranges follow npm's [`semver`](https://github.com/npm/node-semver) grammar
-  for everything (yes, even for Go modules and PyPI — we normalize
-  upstream). This is one parser to maintain.
-- Engine matches a pack version against detected versions:
-  - **Detected** versions come from the resolver (Node: `package.json`
-    dependency tree; Go: `go.mod`; Python: `pyproject.toml` / `uv.lock`).
-  - If the detected runtime is unknown (no resolver data), `compatibility`
-    constraints that depend on it are treated as **unsatisfied** — the pack
-    will not auto-install. The user can `--force` if they know better.
-- A pack with `skillex: ">=2"` will be ignored by a 1.x engine, even if
-  everything else matches.
-
-## Resolving "which version do I install?"
-
-Given a detected project and a registry manifest:
-
-1. Filter manifest entries by name (`atheory-ai.javascript.metaframework.nextjs`).
-2. From those, keep entries whose `compatibility` is satisfied by the
-   detected environment.
-3. Of the remaining, pick the **highest semver**.
-4. If none match, surface a "no compatible version" diagnostic that
-   shows the closest miss (helpful for upgrade hints).
-
-This is the same algorithm npm / cargo / Go modules use; it's well-trodden.
+Skillex 0.14.0 selects the highest advertised, eligible stable SemVer for
+the requested name. An omitted Skillex range allows any engine version.
+If no entry matches, the install stops before fetching an archive.
 
 ## Multiple coexisting majors
 
-Both of these live in the registry at the same time:
+The publisher automatically advertises each source pack's current released
+version. To keep an earlier version discoverable, add its exact identity to
+`registry/supported-versions.json` while it is still in the signed catalog,
+before or alongside the source version bump. For example:
 
+```json
+[
+  { "name": "atheory-ai.javascript.tool.example", "version": "1.7.2" }
+]
 ```
-atheory-ai.javascript.metaframework.nextjs@1.7.2
-  compatibility: { nextjs: ">=13 <14" }
 
-atheory-ai.javascript.metaframework.nextjs@2.4.0
-  compatibility: { nextjs: ">=14 <16" }
-```
+With `1.7.2` declaring `skillex: ">=1 <2"` and the new `2.0.0` declaring
+`">=2 <3"`, compatible resolvers running as 1.x and 2.x select their respective
+archives. Each publication copies retained entries from the verified catalog,
+including their original metadata, URL, size and SHA256. One source directory
+suffices. A version already absent from the catalog cannot be added through
+the retention list.
 
-A Next.js 13 project installs `1.7.2`; a Next.js 15 project installs
-`2.4.0`. They don't interfere.
-
-**On disk in this repo we keep one source directory** (`ecosystems/javascript/
-packs/atheory-ai/metaframework.nextjs/`). The `1.x` source is on the
-`maint/nextjs-1.x` branch; `main` carries `2.x`. We tag releases
-`pack/atheory-ai.javascript.metaframework.nextjs/v2.4.0`. See `05-distribution.md`
-for the tag scheme.
-
-This keeps `main` clean and forces maintainers to consciously cherry-pick
-fixes back to `1.x` — a healthy discipline.
+To retire an older version, remove its declaration and publish the signed
+manifest. A change to the list alone can be published by dispatching
+`release-manifest` and merging its catalog PR. Installed copies remain usable.
+To withdraw installed guidance, add a reviewed entry to
+`registry/revocations.json` and publish. Clients apply it on `skillex pack check`.
+Withdrawal records persist after retirement.
 
 ## When to fork into a new pack name instead
 

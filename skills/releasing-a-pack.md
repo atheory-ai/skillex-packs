@@ -78,6 +78,13 @@ All serve the same signed manifest; only the path differs:
 Verification is per-fetch regardless of surface, so the advisory ones can't
 weaken integrity.
 
+## Keeping an earlier release discoverable
+
+To keep an earlier release discoverable, declare it in
+`registry/supported-versions.json` while it is still advertised. Include that
+change in or before the source version bump. The publisher carries forward
+the previously signed entry. See the versioning skill for retirement.
+
 ## Revoking a bad release
 
 Merge the reviewed `registry/revocations.json` addition, run
