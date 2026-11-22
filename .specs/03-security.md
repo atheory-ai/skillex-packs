@@ -55,8 +55,8 @@ fetch manifest.json + signature bundle
   └─ for each pack the user wants:
        fetch tarball
        verify SHA256 against manifest entry   # the signed manifest is the pin
-       (optional) verify the tarball's own cosign sig + SLSA provenance,
-         signer workflow .github/workflows/release-pack.yml
+       on engines with producer verification, require the archive's cosign
+         signature and SLSA v1 provenance from release-pack.yml at the pack tag
        extract under .skillex/packs/<name>@<version>/
        enforce file allowlist during extraction
        refuse symlinks and absolute paths in archive
@@ -68,9 +68,14 @@ If any step fails, **no files land on disk**.
 
 The release workflow records provenance with
 `actions/attest-build-provenance` in GitHub's artifact attestation service,
-associated with the archive SHA256 and producing workflow. The initial engine
-consumer verifies the manifest signature and archive digest; additional archive
-signature and provenance verification is future work (`atheory-ai/skillex#94`).
+associated with the archive SHA256 and producing workflow. Skillex 0.14.0
+verifies the manifest signature and archive pin. The consumer in
+[skillex#117](https://github.com/atheory-ai/skillex/pull/117) also requires
+the archive's signature bundle and a signed SLSA v1 statement from the
+exact pack tag before extracting a download. The subject must name the
+released tarball and match its SHA256. Keep both the release asset bundle
+and GitHub artifact attestation available for previews, installs and updates.
+Installed copies use their saved manifest and archive offline.
 
 We can extend to Level 3 once we have a hermetic builder; not blocking
 for launch.

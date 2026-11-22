@@ -19,4 +19,4 @@ Success criteria:
 Prompt: A community pack is promoted to core. How do consumers keep working under the new name?
 Success criteria:
   - Old pack gets `superseded-by`, new pack gets `replaces`.
-  - Engine follows the link on update/install; the rename still passes review.
+  - Fresh installs preserve the requested name. Update previews show both names and applying a rename requires explicit consent for that pair.

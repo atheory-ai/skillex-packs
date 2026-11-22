@@ -71,9 +71,10 @@ so the name changes) — link the old and new names:
 - `registry.superseded-by: <new-name>` on the **old** pack.
 - `registry.replaces: <old-name>` on the **new** pack.
 
-The engine follows the link on `update`/`install` so installs migrate
-cleanly, after showing the rename in the diff. Supersession is **not** a
-trust shortcut: a rename across handles still passes the full review gate.
+A fresh `skillex pack get` installs the requested name. Keep the announcing
+release discoverable so installed clients can see the successor in
+`skillex pack update --preview`. Each rename requires explicit
+`--replace old-name=new-name` consent, including moves across handles.
 
 ## Pre-release versions
 

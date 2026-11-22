@@ -127,8 +127,8 @@ major (see `02-versioning.md`).
 
 Entries may also carry optional `replaces` / `superseded-by` fields that
 mirror a pack's rename chain (e.g. a community pack promoted to core under
-the `atheory-ai` handle). The engine follows them on `update`/`install` so
-renames migrate cleanly — see `02-versioning.md`, "Renames & supersession".
+the `atheory-ai` handle). Fresh installs preserve the requested name.
+Updates can propose the successor for explicit approval — see `02-versioning.md`, "Renames & supersession".
 Pre-release versions are listed too but only resolve under
 `--include-prerelease`.
 
